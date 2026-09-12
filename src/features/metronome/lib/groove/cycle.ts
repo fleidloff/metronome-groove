@@ -1,7 +1,13 @@
 import type { Hit } from '../transport/source'
 import { type GrooveDefinition, type Line, VOICE_ORDER } from './grooves/definition'
 
-export const BARS_PER_CYCLE = 4
+export const BARS_PER_CYCLE = 8
+
+/** Where the two marked bars sit in the cycle. `invariants.ts` reads these
+ *  rather than keeping a second copy, so a violation message cannot name a bar
+ *  the checker did not look at. */
+export const LIGHT_BAR = 3
+export const FILL_BAR = 7
 
 const absoluteBar = (step: number, stepsPerBar: number) =>
   Math.floor(step / stepsPerBar)
@@ -57,8 +63,10 @@ export function hitsAt(
   const bars = barsFor(groove)
   const stated = bars.ordinary[phaseFor(step, groove)]
 
-  const marked = [stated, bars.light, stated, bars.fill]
-  const bar = variations ? marked[barIndexFor(step, groove.steps)] : stated
+  const index = barIndexFor(step, groove.steps)
+  const marked =
+    index === LIGHT_BAR ? bars.light : index === FILL_BAR ? bars.fill : stated
+  const bar = variations ? marked : stated
   const inBar = wrap(step, groove.steps)
 
   return bar[inBar]

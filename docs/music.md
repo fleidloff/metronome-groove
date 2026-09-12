@@ -161,10 +161,14 @@ snare      4 12          ghosts 7 9 15
 kick       0 3 10
 ```
 
-**This is the *ordinary* bar, and V8 made it one of three.** The groove now runs
-a four-bar cycle — ordinary, light, ordinary, fill — derived from the absolute
-step so nothing becomes stateful, and shown on screen as one bar because the
-display is four beat dots.
+**This is the *ordinary* bar, and V8 made it one of three.** The groove runs a
+cycle of marked bars — derived from the absolute step so nothing becomes
+stateful, and shown on screen as one bar because the display is four beat dots.
+**V8 made that cycle four bars and V16 made it eight**: ordinary ×3, the light
+bar, ordinary ×3, the fill. The ask was literally *"the fills are coming too
+often"*, and at 100 bpm a fill now arrives about every 19 seconds rather than
+every 10. Every groove inherited it at once, because the cycle is machinery
+rather than data.
 [ADR 0010](adr/0010-a-marked-bar-modifies-the-figure.md) governs how far a
 marked bar may depart: it **modifies** this figure and never replaces it, the
 gesture lives in steps 8–15, and six invariants hold in every bar. The sibling's

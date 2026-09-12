@@ -19,7 +19,10 @@ groove after this one.
 **A groove is a `GrooveDefinition` — data — and `lib/groove/` is the machinery
 that plays any of them.**
 
-`cycle.ts` owns the bar index, the four-bar cycle and `hitsAt`. `source.ts` owns
+`cycle.ts` owns the bar index, the cycle of marked bars and `hitsAt`. It read
+*"the four-bar cycle"* until V16 made it eight — the length is a constant this
+record does not fix, which is the point of the sentence rather than a detail of
+it. `source.ts` owns
 one `createGrooveSource(definition, options)`. `humanize.ts` and `swing.ts` keep
 their helpers and lose their named records. `grooves/definition.ts` states the
 shape, and `grooves/straightFunk.ts` and `grooves/rock.ts` hold nothing but

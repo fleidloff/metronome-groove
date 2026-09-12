@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Hit, SourceId } from '../transport/source'
 import * as cycle from './cycle'
-import { BARS_PER_CYCLE, barIndexFor, hitsAt } from './cycle'
-import type { GrooveDefinition, Line } from './grooves/definition'
-import { sixInvariantViolations, undeclaredVoices } from './invariants'
+import { BARS_PER_CYCLE, FILL_BAR, LIGHT_BAR, barIndexFor, hitsAt } from './cycle'
+import { type GrooveDefinition, type Line, VOICE_ORDER } from './grooves/definition'
+import { CYCLE_BARS, sixInvariantViolations, undeclaredVoices } from './invariants'
 import { BOSSA_NOVA } from './grooves/bossaNova'
 import { ROCK } from './grooves/rock'
 import { SECOND_LINE } from './grooves/secondLine'
@@ -86,12 +86,30 @@ const without = (lines: readonly Line[], voice: string, at: number): readonly Li
 const numbered = (violations: readonly string[], invariant: number) =>
   violations.filter((violation) => violation.startsWith(`${invariant}.`))
 
-describe('the four-bar cycle', () => {
-  it('runs ordinary, light, ordinary, fill over the absolute step', () => {
-    expect(BARS_PER_CYCLE).toBe(4)
-    expect(Array.from({ length: 8 }, (_, bar) => barIndexFor(bar * 16, 16))).toEqual([
-      0, 1, 2, 3, 0, 1, 2, 3,
+describe('the eight-bar cycle', () => {
+  it('runs three ordinary bars, the light one, three more, then the fill', () => {
+    expect(BARS_PER_CYCLE).toBe(8)
+    expect(LIGHT_BAR).toBe(3)
+    expect(FILL_BAR).toBe(7)
+    expect(Array.from({ length: 16 }, (_, bar) => barIndexFor(bar * 16, 16))).toEqual([
+      0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7,
     ])
+  })
+
+  it('marks the fourth and eighth bars, and leaves the other six ordinary', () => {
+    const ordinaryBars = Array.from({ length: BARS_PER_CYCLE }, (_, bar) => bar).filter(
+      (bar) => bar !== LIGHT_BAR && bar !== FILL_BAR,
+    )
+
+    expect(ordinaryBars).toEqual([0, 1, 2, 4, 5, 6])
+
+    for (const bar of ordinaryBars) {
+      expect(barAt(FIXTURE, bar), `bar ${bar} departs from the figure`).toEqual(ORDINARY_BAR)
+    }
+
+    expect(barAt(FIXTURE, LIGHT_BAR)).not.toEqual(ORDINARY_BAR)
+    expect(barAt(FIXTURE, FILL_BAR)).not.toEqual(ORDINARY_BAR)
+    expect(barAt(FIXTURE, LIGHT_BAR)).not.toEqual(barAt(FIXTURE, FILL_BAR))
   })
 
   it('holds the bar index for every step inside the bar', () => {
@@ -104,28 +122,30 @@ describe('the four-bar cycle', () => {
     expect(Array.from({ length: 8 }, (_, step) => barIndexFor(step, 4))).toEqual([
       0, 0, 0, 0, 1, 1, 1, 1,
     ])
-    expect(barIndexFor(16, 4)).toBe(0)
+    expect(barIndexFor(16, 4)).toBe(4)
+    expect(barIndexFor(4 * BARS_PER_CYCLE, 4)).toBe(0)
   })
 
   it('puts the step before the downbeat in the bar before it, never in bar -1', () => {
-    expect(barIndexFor(-1, 16)).toBe(3)
-    expect(barIndexFor(-16, 16)).toBe(3)
-    expect(barIndexFor(-17, 16)).toBe(2)
+    expect(barIndexFor(-1, 16)).toBe(BARS_PER_CYCLE - 1)
+    expect(barIndexFor(-16, 16)).toBe(BARS_PER_CYCLE - 1)
+    expect(barIndexFor(-17, 16)).toBe(BARS_PER_CYCLE - 2)
     expect(barIndexFor(-16 * BARS_PER_CYCLE, 16)).toBe(0)
   })
 
   it('hands a step its hits in voice order, whatever order the lines are written in', () => {
     expect(barAt(FIXTURE, 0)).toEqual(ORDINARY_BAR)
-    expect(hitsAt(FIXTURE, FIXTURE.steps * 3 + 2, true)).toEqual([
+    expect(hitsAt(FIXTURE, FIXTURE.steps * FILL_BAR + 2, true)).toEqual([
       { voice: 'snare', velocity: 0.7 },
     ])
   })
 
-  it('states the ordinary figure twice before anything changes', () => {
-    expect(barAt(FIXTURE, 0)).toEqual(ORDINARY_BAR)
-    expect(barAt(FIXTURE, 2)).toEqual(ORDINARY_BAR)
-    expect(barAt(FIXTURE, 1)).not.toEqual(ORDINARY_BAR)
-    expect(barAt(FIXTURE, 3)).not.toEqual(ORDINARY_BAR)
+  it('states the ordinary figure three times before anything changes', () => {
+    for (let bar = 0; bar < LIGHT_BAR; bar += 1) {
+      expect(barAt(FIXTURE, bar), `bar ${bar}`).toEqual(ORDINARY_BAR)
+    }
+
+    expect(barAt(FIXTURE, LIGHT_BAR)).not.toEqual(ORDINARY_BAR)
   })
 
   it('repeats the cycle, not the bar, for steps beyond it', () => {
@@ -157,6 +177,8 @@ describe('the four-bar cycle', () => {
     expect([...new Set(imports)].sort()).toEqual(['../transport/source', './grooves/definition'])
     expect(Object.keys(cycle).sort()).toEqual([
       'BARS_PER_CYCLE',
+      'FILL_BAR',
+      'LIGHT_BAR',
       'barIndexFor',
       'hitsAt',
       'phaseFor',
@@ -172,7 +194,7 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
   it('1. fails a bar that loses the downbeat kick', () => {
     const violations = sixInvariantViolations(mutated({ fill: without(FIXTURE.fill, 'kick', 0) }))
 
-    expect(numbered(violations, 1)).toEqual(['1. bar 4, the fill: step 0 has no kick at 0.95'])
+    expect(numbered(violations, 1)).toEqual([`1. bar ${FILL_BAR + 1}, the fill: step 0 has no kick at 0.95`])
   })
 
   it('2. fails a bar that opens a hole in the subdivision it states', () => {
@@ -181,7 +203,7 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
     )
 
     expect(numbered(violations, 2)).toEqual([
-      '2. bar 4, the fill: step 3 is a hole in the stated 1/4',
+      `2. bar ${FILL_BAR + 1}, the fill: step 3 is a hole in the stated 1/4`,
     ])
   })
 
@@ -205,7 +227,7 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
     const violations = sixInvariantViolations(mutated({ fill: without(FIXTURE.fill, 'hatClosed', 1) }))
 
     expect(numbered(violations, 3)).toEqual([
-      '3. bar 4, the fill: step 1 departs from the ordinary figure before the half bar',
+      `3. bar ${FILL_BAR + 1}, the fill: step 1 departs from the ordinary figure before the half bar`,
     ])
   })
 
@@ -224,7 +246,7 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
     )
 
     expect(numbered(violations, 5)).toEqual([
-      '5. bar 2, the light one: the open hat on step 3 is never closed inside the bar',
+      `5. bar ${LIGHT_BAR + 1}, the light one: the open hat on step 3 is never closed inside the bar`,
     ])
   })
 
@@ -249,7 +271,7 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
     )
 
     expect(numbered(violations, 6)).toContain(
-      '6. bar 1/3, ordinary: the closed hat states no rung at all, so the bar has no ladder',
+      `6. the ordinary bars: the closed hat states no rung at all, so the bar has no ladder`,
     )
   })
 
@@ -291,7 +313,9 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
     const violations = numbered(sixInvariantViolations(wrong), 3)
 
     expect(violations.length).toBeGreaterThan(0)
-    expect(violations.every((violation) => violation.includes('bar 2'))).toBe(true)
+    expect(
+      violations.every((violation) => violation.includes(`bar ${LIGHT_BAR + 1}`)),
+    ).toBe(true)
   })
 })
 
@@ -319,5 +343,77 @@ describe('a groove declares every voice it plays', () => {
   it('ignores the claves, which no groove declares and every bank holds', () => {
     expect(undeclaredVoices(BOSSA_NOVA)).toEqual([])
     expect(BOSSA_NOVA.voices).not.toContain('claves')
+  })
+})
+
+
+describe('the eight-bar cycle, over every groove the app can select', () => {
+  const barOfGroove = (groove: GrooveDefinition, bar: number, variations: boolean) =>
+    Array.from({ length: groove.steps }, (_, step) =>
+      hitsAt(groove, bar * groove.steps + step, variations),
+    )
+
+  const ordinaryOf = (groove: GrooveDefinition, bar: number) =>
+    barOfGroove(groove, bar, false)
+
+  it.each(EVERY_GROOVE_BY_NAME)('marks bars %s at the light bar and the fill, nowhere else', (_id, groove) => {
+    for (let bar = 0; bar < BARS_PER_CYCLE * 2; bar += 1) {
+      const index = bar % BARS_PER_CYCLE
+      const played = barOfGroove(groove, bar, true)
+
+      if (index === LIGHT_BAR || index === FILL_BAR) {
+        expect(played, `bar ${bar} should depart`).not.toEqual(ordinaryOf(groove, bar))
+      } else {
+        expect(played, `bar ${bar} should be ordinary`).toEqual(ordinaryOf(groove, bar))
+      }
+    }
+  })
+
+  /**
+   * V8's guarantee, and the one this change must not spend. The expected bar is
+   * built straight from the definition's `Line`s rather than fetched back
+   * through `hitsAt`, so this is a golden rather than a restatement: comparing
+   * `hitsAt` against itself would prove only that the off render is periodic,
+   * and would still pass if the phase it reads were wrong.
+   */
+  it.each(EVERY_GROOVE_BY_NAME)('renders %s from its own definition with variations off', (_id, groove) => {
+    const fromDefinition = groove.ordinary.map((lines) =>
+      Array.from({ length: groove.steps }, (_, step) =>
+        lines
+          .filter((line) => line.steps.includes(step))
+          .map(({ voice, velocity }) => ({ voice, velocity }))
+          .sort((a, b) => VOICE_ORDER.indexOf(a.voice) - VOICE_ORDER.indexOf(b.voice)),
+      ),
+    )
+
+    for (let step = 0; step < groove.steps * BARS_PER_CYCLE * 2; step += 1) {
+      const phase = Math.floor(step / groove.steps) % groove.ordinary.length
+      const inBar = step % groove.steps
+
+      expect(hitsAt(groove, step, false), `step ${step}`).toEqual(fromDefinition[phase][inBar])
+    }
+  })
+
+  it.each(EVERY_GROOVE_BY_NAME)('gives %s two marked bars in eight, not four', (_id, groove) => {
+    const departures = Array.from({ length: BARS_PER_CYCLE }, (_, bar) => bar).filter(
+      (bar) => JSON.stringify(barOfGroove(groove, bar, true)) !== JSON.stringify(ordinaryOf(groove, bar)),
+    )
+
+    expect(departures).toEqual([LIGHT_BAR, FILL_BAR])
+  })
+
+  it('reads the two indices from cycle.ts rather than keeping a second copy', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'src/features/metronome/lib/groove/invariants.ts'),
+      'utf8',
+    )
+
+    expect(source).toMatch(/import \{[^}]*FILL_BAR[^}]*\} from '.\/cycle'/u)
+    expect(source).toMatch(/import \{[^}]*LIGHT_BAR[^}]*\} from '.\/cycle'/u)
+    expect(source).not.toMatch(/^const (FILL|LIGHT)_BAR = /mu)
+
+    expect(CYCLE_BARS.map(([, index]) => index)).toEqual([0, LIGHT_BAR, FILL_BAR])
+    expect(CYCLE_BARS[1][0]).toContain(String(LIGHT_BAR + 1))
+    expect(CYCLE_BARS[2][0]).toContain(String(FILL_BAR + 1))
   })
 })

@@ -19,7 +19,7 @@ const barOf = (lines: readonly Line[]): readonly (readonly Hit[])[] =>
       .sort((a, b) => VOICE_ORDER.indexOf(a.voice) - VOICE_ORDER.indexOf(b.voice)),
   )
 
-/** `specs/10-rock-groove/spec.md` § The three bars, bar 1 / 3, step by step. */
+/** `specs/10-rock-groove/spec.md` § The three bars, the ordinary bar, step by step. */
 const ORDINARY: readonly (readonly Hit[])[] = [
   [
     { voice: 'kick', velocity: 0.95 },
@@ -74,9 +74,9 @@ const FILL: readonly (readonly Hit[])[] = [
 ]
 
 const BARS = [
-  ['bar 1 / 3, ordinary', ORDINARY, () => barOf(ROCK.ordinary[0])],
-  ['bar 2, the light one', LIGHT, () => barOf(ROCK.light)],
-  ['bar 4, the fill', FILL, () => barOf(ROCK.fill)],
+  ['the ordinary bar', ORDINARY, () => barOf(ROCK.ordinary[0])],
+  ['the light bar', LIGHT, () => barOf(ROCK.light)],
+  ['the fill bar', FILL, () => barOf(ROCK.fill)],
 ] as const
 
 const stepsIn = (bar: readonly (readonly Hit[])[], voice: VoiceName) =>
@@ -125,7 +125,7 @@ describe('rock, as a definition', () => {
   })
 })
 
-describe('bar 1 / 3, the ordinary bar', () => {
+describe('the ordinary bar', () => {
   const bar = () => barOf(ROCK.ordinary[0])
 
   it.each(ORDINARY.map((hits, step) => [step, hits] as const))(
@@ -190,7 +190,7 @@ describe('the bar line, which is the kick velocity and nothing else', () => {
   })
 })
 
-describe('bar 2, the light one', () => {
+describe('the light bar', () => {
   const bar = () => barOf(ROCK.light)
 
   it.each(LIGHT.map((hits, step) => [step, hits] as const))(
@@ -225,7 +225,7 @@ describe('bar 2, the light one', () => {
   })
 })
 
-describe('bar 4, the fill', () => {
+describe('the fill bar', () => {
   const bar = () => barOf(ROCK.fill)
 
   it.each(FILL.map((hits, step) => [step, hits] as const))(
@@ -253,7 +253,7 @@ describe('bar 4, the fill', () => {
     expect(velocitiesIn([bar()[8], bar()[12]], 'kick')).toEqual([0.86, 0.86])
   })
 
-  it('opens the hat on step 10, the same event bar 2 fires', () => {
+  it('opens the hat on step 10, the same event the light bar fires', () => {
     expect(stepsIn(bar(), 'hatOpen')).toEqual([10])
     expect(velocitiesIn([bar()[10]], 'hatOpen')).toEqual(
       velocitiesIn([barOf(ROCK.light)[10]], 'hatOpen'),

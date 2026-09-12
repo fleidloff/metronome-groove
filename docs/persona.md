@@ -74,8 +74,10 @@ Plays Wordle every morning.
   condition, and the reason this is allowed at all: *"it's minimal and we can
   agree that the beat is not completely drifting apart but always coming back
   together."*
-- **A groove varies, and the player can stop it.** From V8 the funk groove runs
-  a four-bar cycle with a light variation in bar 2 and a fill in bar 4. Sam
+- **A groove varies, and the player can stop it.** Every groove runs a cycle of
+  marked bars — a light variation and a fill. V8 made that cycle four bars; V16
+  made it eight, on Sam's own report that *"the fills are coming too often"*, so
+  the light bar is now the fourth and the fill the eighth. Sam
   asked for three things to survive every marked bar — the kick on 1, the snare
   on 2 and 4, and the hat stating sixteenths — and was overruled on the last
   two, deliberately:

@@ -63,7 +63,7 @@ const ORDINARY: readonly (readonly Hit[])[] = [
 
 const QUARTERS = [0, 4, 8, 12]
 
-describe('bar 1 / 3, the ordinary bar', () => {
+describe('the ordinary bar', () => {
   const bar = () => barOf(SECOND_LINE.ordinary[0])
 
   it.each(ORDINARY.map((hits, step) => [step, hits] as const))(
@@ -188,7 +188,7 @@ describe('second line, as a definition', () => {
 const differingSteps = (a: readonly (readonly Hit[])[], b: readonly (readonly Hit[])[]) =>
   a.flatMap((hits, step) => (JSON.stringify(hits) === JSON.stringify(b[step]) ? [] : [step]))
 
-/** `specs/13-second-line/spec.md` § The three bars, bar 2. */
+/** `specs/13-second-line/spec.md` § The three bars, the light bar. */
 const LIGHT: readonly (readonly Hit[])[] = ORDINARY.map((hits, step) => {
   if (step === 12) return [{ voice: 'kick', velocity: 0.86 }, { voice: 'hatOpen', velocity: 0.8 }]
   if (step === 14)
@@ -200,7 +200,7 @@ const LIGHT: readonly (readonly Hit[])[] = ORDINARY.map((hits, step) => {
   return hits
 })
 
-describe('bar 2, the light one', () => {
+describe('the light bar', () => {
   const bar = () => barOf(SECOND_LINE.light)
 
   it.each(LIGHT.map((hits, step) => [step, hits] as const))(
@@ -238,7 +238,7 @@ describe('bar 2, the light one', () => {
   })
 })
 
-/** `specs/13-second-line/spec.md` § The three bars, bar 4. */
+/** `specs/13-second-line/spec.md` § The three bars, the fill bar. */
 const FILLED_IN: Record<number, number> = { 8: 0.62, 9: 0.45, 12: 0.78, 13: 0.45, 15: 0.45 }
 
 const FILL: readonly (readonly Hit[])[] = ORDINARY.map((hits, step) => {
@@ -251,7 +251,7 @@ const FILL: readonly (readonly Hit[])[] = ORDINARY.map((hits, step) => {
   )
 })
 
-describe('bar 4, the fill, which fills the figure’s gaps in', () => {
+describe('the fill bar, which fills the figure’s gaps in', () => {
   const bar = () => barOf(SECOND_LINE.fill)
 
   it.each(FILL.map((hits, step) => [step, hits] as const))(
@@ -322,9 +322,9 @@ describe('bar 4, the fill, which fills the figure’s gaps in', () => {
 })
 
 const BARS = [
-  ['bar 1 / 3, ordinary', () => barOf(SECOND_LINE.ordinary[0])],
-  ['bar 2, the light one', () => barOf(SECOND_LINE.light)],
-  ['bar 4, the fill', () => barOf(SECOND_LINE.fill)],
+  ['the ordinary bar', () => barOf(SECOND_LINE.ordinary[0])],
+  ['the light bar', () => barOf(SECOND_LINE.light)],
+  ['the fill bar', () => barOf(SECOND_LINE.fill)],
 ] as const
 
 describe('the six invariants, which ADR 0010 needs no amendment to keep', () => {
@@ -512,9 +512,9 @@ describe('the figure docs/music.md §2 publishes', () => {
  */
 describe('the run-in to the downbeat, in every bar', () => {
   const BARS = [
-    ['bar 1 / 3, ordinary', () => barOf(SECOND_LINE.ordinary[0])],
-    ['bar 2, the light one', () => barOf(SECOND_LINE.light)],
-    ['bar 4, the fill', () => barOf(SECOND_LINE.fill)],
+    ['the ordinary bar', () => barOf(SECOND_LINE.ordinary[0])],
+    ['the light bar', () => barOf(SECOND_LINE.light)],
+    ['the fill bar', () => barOf(SECOND_LINE.fill)],
   ] as const
 
   const powerDbfs = (hits: readonly Hit[]) =>

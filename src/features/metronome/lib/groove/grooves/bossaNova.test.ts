@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
 import { DYNAMIC_RANGE_DB, gainFor } from '@/lib/velocity'
 import type { Hit, VoiceName } from '../../transport/source'
-import { BARS_PER_CYCLE, hitsAt, phaseFor } from '../cycle'
+import { BARS_PER_CYCLE, FILL_BAR, LIGHT_BAR, hitsAt, phaseFor } from '../cycle'
 import { sixInvariantViolations } from '../invariants'
 import { createGrooveSource } from '../source'
 import { CLAVES_NOMINAL_VELOCITY } from '../../click/claves'
@@ -112,8 +112,8 @@ const FILL: readonly (readonly Hit[])[] = LIGHT.map((hits, step) => {
 const BARS = [
   ['ordinary, phase 0', PHASE_0, () => barOf(BOSSA_NOVA.ordinary[0])],
   ['ordinary, phase 1', PHASE_1, () => barOf(BOSSA_NOVA.ordinary[1])],
-  ['bar 2, the light one', LIGHT, () => barOf(BOSSA_NOVA.light)],
-  ['bar 4, the fill', FILL, () => barOf(BOSSA_NOVA.fill)],
+  ['the light bar', LIGHT, () => barOf(BOSSA_NOVA.light)],
+  ['the fill bar', FILL, () => barOf(BOSSA_NOVA.fill)],
 ] as const
 
 describe('bossa nova, as a definition', () => {
@@ -245,7 +245,7 @@ describe('the two ordinary bars', () => {
   })
 })
 
-describe('bar 2, the light one, which is written against phase 1', () => {
+describe('the light bar, which is written against phase 1', () => {
   const bar = () => barOf(BOSSA_NOVA.light)
 
   it.each(LIGHT.map((hits, step) => [step, hits] as const))(
@@ -285,7 +285,7 @@ describe('bar 2, the light one, which is written against phase 1', () => {
   })
 })
 
-describe('bar 4, the fill, which is written against phase 1', () => {
+describe('the fill bar, which is written against phase 1', () => {
   const bar = () => barOf(BOSSA_NOVA.fill)
 
   it.each(FILL.map((hits, step) => [step, hits] as const))(
@@ -365,11 +365,24 @@ describe('the cycle against the clave', () => {
     }
   })
 
-  it('locks bars 0 and 2 to the 3-side and 1 and 3 to the 2-side', () => {
+  it('locks the even bars to the 3-side and the odd ones to the 2-side', () => {
     expect(BARS_PER_CYCLE % BOSSA_NOVA.ordinary.length).toBe(0)
 
-    for (const bar of [0, 2]) expect(phaseFor(bar * BOSSA_NOVA.steps, BOSSA_NOVA)).toBe(0)
-    for (const bar of [1, 3]) expect(phaseFor(bar * BOSSA_NOVA.steps, BOSSA_NOVA)).toBe(1)
+    for (let bar = 0; bar < BARS_PER_CYCLE; bar += 1) {
+      expect(phaseFor(bar * BOSSA_NOVA.steps, BOSSA_NOVA), `bar ${bar}`).toBe(bar % 2)
+    }
+  })
+
+  /**
+   * The whole reason a longer cycle is safe for this groove: both marked bars
+   * must keep landing on one side of the clave, or the light bar and the fill
+   * would be written against a figure they do not sit on. 2 divides 8 as it
+   * divided 4, so they stay on the 2-side exactly as at four bars.
+   */
+  it('keeps both marked bars on the answering side, as they were at four bars', () => {
+    expect(phaseFor(LIGHT_BAR * BOSSA_NOVA.steps, BOSSA_NOVA)).toBe(1)
+    expect(phaseFor(FILL_BAR * BOSSA_NOVA.steps, BOSSA_NOVA)).toBe(1)
+    expect(LIGHT_BAR % BOSSA_NOVA.ordinary.length).toBe(FILL_BAR % BOSSA_NOVA.ordinary.length)
   })
 
   it('never crosses the clave, over eight cycles', () => {
@@ -382,15 +395,15 @@ describe('the cycle against the clave', () => {
   })
 
   it('plays the marked bars only with variations on', () => {
-    sameHits(played(1, true), barOf(BOSSA_NOVA.light))
-    sameHits(played(3, true), barOf(BOSSA_NOVA.fill))
-    sameHits(played(1, false), barOf(BOSSA_NOVA.ordinary[1]))
-    sameHits(played(3, false), barOf(BOSSA_NOVA.ordinary[1]))
+    sameHits(played(LIGHT_BAR, true), barOf(BOSSA_NOVA.light))
+    sameHits(played(FILL_BAR, true), barOf(BOSSA_NOVA.fill))
+    sameHits(played(LIGHT_BAR, false), barOf(BOSSA_NOVA.ordinary[LIGHT_BAR % 2]))
+    sameHits(played(FILL_BAR, false), barOf(BOSSA_NOVA.ordinary[FILL_BAR % 2]))
   })
 })
 
 describe('the clave never stops and is never alone', () => {
-  it('is bit-identical across all four cycle bars, for its phase', () => {
+  it('is bit-identical across every cycle bar, for its phase', () => {
     for (let bar = 0; bar < BARS_PER_CYCLE; bar += 1) {
       expect(only(played(bar, true), 'claves'), `bar ${bar}`).toEqual(
         only(barOf(BOSSA_NOVA.ordinary[bar % 2]), 'claves'),

@@ -99,10 +99,18 @@ clave. A bar at absolute index `b` states `ordinary[b % P]`, and a marked bar
 reproduces **that** bar's steps 0–7. For `P = 1` this reduces to the original
 wording word for word.
 
-`BARS_PER_CYCLE` is 4 and every phase length so far divides it, so the phase of
-a marked bar is fixed forever: cycle bars 0 and 2 are phase 0, bars 1 and 3 are
-phase 1. Bossa's light bar and fill therefore both land on the 2-side, which is
-the answering half and the emptiest bar the groove has.
+Every phase length so far divides `BARS_PER_CYCLE`, so the phase of a marked bar
+is fixed forever. Bossa's light bar and fill therefore both land on the 2-side,
+which is the answering half and the emptiest bar the groove has.
+
+> **Correction of fact, 2026-09-12 · V16.** This paragraph read *"`BARS_PER_CYCLE`
+> is 4 … cycle bars 0 and 2 are phase 0, bars 1 and 3 are phase 1"*. The cycle
+> is now **8** — the marked bars are at indices 3 and 7 — and 2 still divides it,
+> so bossa's two marked bars still land on the 2-side and the conclusion is
+> unchanged. **This is not the third amendment the section below warns about**:
+> no invariant is generalised and the decision is untouched. The cycle's
+> *length* was never this record's subject — it governs what a marked bar may
+> do, not how often one arrives.
 
 **Invariant 3 constrains the first half only, and that is a real limit.** A
 marked bar written from the wrong phase is caught only where the two ordinary

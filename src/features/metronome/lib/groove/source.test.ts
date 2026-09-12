@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
 import type { Hit, Source } from '../transport/source'
-import { hitsAt } from './cycle'
+import { BARS_PER_CYCLE, FILL_BAR, barIndexFor, hitsAt } from './cycle'
 import { BOSSA_NOVA } from './grooves/bossaNova'
 import type { GrooveDefinition } from './grooves/definition'
 import { ROCK } from './grooves/rock'
@@ -24,7 +24,15 @@ const CYCLE_STEPS = STEPS_PER_BAR * CYCLE_BARS
 const takeFor = (hit: Hit, step: number) =>
   sampleUrlFor(hit.voice as KitVoiceName, hit.velocity, step)
 
-const FILL_BAR_STARTS = [48, 112, 176]
+/**
+ * The first step of three fill bars. Derived rather than written: at four bars
+ * these were 48, 112 and 176, and a wrong literal would still pass the
+ * assertion below — ordinary bars draw distinct take sets too. The guard is the
+ * test that each of these really is a fill bar.
+ */
+const FILL_BAR_STARTS = [0, 1, 2].map(
+  (cycle) => (cycle * BARS_PER_CYCLE + FILL_BAR) * STEPS_PER_BAR,
+)
 
 const sameHits = (a: readonly Hit[], b: readonly Hit[]) =>
   a.length === b.length &&
@@ -197,6 +205,22 @@ describe('the groove source, over straight funk', () => {
 
     expect(new Set(absolute).size).toBe(FILL_BAR_STARTS.length)
     expect(new Set(phraseLocal).size).toBe(1)
+
+    // The assertion above passes on any three bar starts — ordinary bars draw
+    // distinct take sets too — so the literal is what holds it to fill bars.
+    // `barIndexFor` of a derived start is FILL_BAR by construction and would
+    // prove nothing; that these bars actually depart from the figure does.
+    expect(FILL_BAR_STARTS).toEqual([112, 240, 368])
+
+    for (const start of FILL_BAR_STARTS) {
+      const played = Array.from({ length: STEPS_PER_BAR }, (_, step) => on.hitsAt(start + step))
+      const ordinary = Array.from({ length: STEPS_PER_BAR }, (_, step) =>
+        off.hitsAt(start + step),
+      )
+
+      expect(barIndexFor(start, STEPS_PER_BAR), `step ${start}`).toBe(FILL_BAR)
+      expect(played, `step ${start} is not a fill bar`).not.toEqual(ordinary)
+    }
   })
 })
 

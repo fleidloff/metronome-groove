@@ -3,7 +3,7 @@
 import { stepSeconds } from '@/lib/steps'
 import { DYNAMIC_RANGE_DB, type Velocity } from '@/lib/velocity'
 import type { Hit, VoiceName } from '../transport/source'
-import { hitsAt } from './cycle'
+import { FILL_BAR, LIGHT_BAR, hitsAt } from './cycle'
 import type { GrooveDefinition } from './grooves/definition'
 import { createGrooveSource } from './source'
 
@@ -11,13 +11,17 @@ export interface InvariantOptions {
   readonly ghostVelocity?: Velocity
 }
 
+/**
+ * The bars the checker reads, named from the indices `cycle.ts` declares. Both
+ * the index and the wording are derived, so a message can never name a bar the
+ * checker did not look at — the two drifted apart for exactly as long as this
+ * file kept its own copy of the numbers.
+ */
 export const CYCLE_BARS: readonly (readonly [string, number])[] = [
-  ['bar 1/3, ordinary', 0],
-  ['bar 2, the light one', 1],
-  ['bar 4, the fill', 3],
+  ['the ordinary bars', 0],
+  [`bar ${LIGHT_BAR + 1}, the light one`, LIGHT_BAR],
+  [`bar ${FILL_BAR + 1}, the fill`, FILL_BAR],
 ]
-
-const FILL_BAR = 3
 
 /**
  * Kit voices a groove's lines play but its `voices` does not declare. An
@@ -187,7 +191,9 @@ function fillSnareLadder(
   )
 
   if (contour.length < 2) {
-    return ['6. bar 4, the fill: the snare states no contour in the second half of the bar']
+    return [
+      `6. bar ${FILL_BAR + 1}, the fill: the snare states no contour in the second half of the bar`,
+    ]
   }
 
   return ladderViolations(groove, "6. the fill's snare", contour)

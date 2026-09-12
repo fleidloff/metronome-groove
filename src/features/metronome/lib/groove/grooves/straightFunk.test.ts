@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR } from '@/lib/steps'
 import { DYNAMIC_RANGE_DB, gainFor } from '@/lib/velocity'
 import type { Hit, VoiceName } from '../../transport/source'
-import { BARS_PER_CYCLE, hitsAt } from '../cycle'
+import { BARS_PER_CYCLE, FILL_BAR, LIGHT_BAR, hitsAt } from '../cycle'
 import { sixInvariantViolations } from '../invariants'
 import { type KitVoiceName, layerFor } from '../kit'
 import { GHOST_VELOCITY, STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
@@ -149,12 +149,13 @@ const FILL_EXPECTED: readonly (readonly Hit[])[] = [
   [{ voice: 'snare', velocity: 0.94 }],
 ]
 
-const BAR_SHAPES = [
-  ['bar 1, ordinary', 0, EXPECTED],
-  ['bar 2, the light one', 1, LIGHT_EXPECTED],
-  ['bar 3, ordinary', 2, EXPECTED],
-  ['bar 4, the fill', 3, FILL_EXPECTED],
-] as const
+const BAR_SHAPES = Array.from({ length: BARS_PER_CYCLE }, (_, barIndex) =>
+  barIndex === LIGHT_BAR
+    ? ([`bar ${barIndex + 1}, the light one`, barIndex, LIGHT_EXPECTED] as const)
+    : barIndex === FILL_BAR
+      ? ([`bar ${barIndex + 1}, the fill`, barIndex, FILL_EXPECTED] as const)
+      : ([`bar ${barIndex + 1}, ordinary`, barIndex, EXPECTED] as const),
+)
 
 const cycleBar = (barIndex: number): readonly (readonly Hit[])[] =>
   Array.from({ length: STRAIGHT_FUNK_STEPS }, (_, step) =>
@@ -167,17 +168,24 @@ const stepsIn = (bar: readonly (readonly Hit[])[], voice: VoiceName) =>
 const velocitiesIn = (bar: readonly (readonly Hit[])[], voice: VoiceName) =>
   bar.flatMap((hits) => hits.filter((h) => h.voice === voice).map((h) => h.velocity))
 
-describe('the four-bar cycle', () => {
-  it('runs ordinary, light, ordinary, fill over the absolute step', () => {
-    expect(BARS_PER_CYCLE).toBe(4)
+describe('the eight-bar cycle', () => {
+  it('runs three ordinary bars, the light one, three more, then the fill', () => {
+    expect(BARS_PER_CYCLE).toBe(8)
     expect(BAR_SHAPES.map(([, barIndex]) => cycleBar(barIndex))).toEqual(
       BAR_SHAPES.map(([, , shape]) => shape),
     )
   })
 
-  it('states the ordinary figure twice before anything changes', () => {
-    expect(cycleBar(0)).toEqual(EXPECTED)
-    expect(cycleBar(2)).toEqual(EXPECTED)
+  it('states the ordinary figure three times before anything changes', () => {
+    for (let barIndex = 0; barIndex < LIGHT_BAR; barIndex += 1) {
+      expect(cycleBar(barIndex), `bar ${barIndex}`).toEqual(EXPECTED)
+    }
+  })
+
+  it('states it three more times between the light bar and the fill', () => {
+    for (let barIndex = LIGHT_BAR + 1; barIndex < FILL_BAR; barIndex += 1) {
+      expect(cycleBar(barIndex), `bar ${barIndex}`).toEqual(EXPECTED)
+    }
   })
 
   it('repeats the cycle, not the bar, for steps beyond it', () => {
@@ -189,13 +197,13 @@ describe('the four-bar cycle', () => {
   })
 })
 
-describe('bar 2, the light one', () => {
-  const bar = () => cycleBar(1)
+describe('the light bar', () => {
+  const bar = () => cycleBar(LIGHT_BAR)
 
   it.each(LIGHT_EXPECTED.map((hits, step) => [step, hits] as const))(
     'plays step %i exactly as the table writes it',
     (step, hits) => {
-      expect(hitsAt(STRAIGHT_FUNK, STRAIGHT_FUNK_STEPS + step, true)).toEqual(hits)
+      expect(hitsAt(STRAIGHT_FUNK, STRAIGHT_FUNK_STEPS * LIGHT_BAR + step, true)).toEqual(hits)
     },
   )
 
@@ -234,13 +242,13 @@ describe('bar 2, the light one', () => {
   })
 })
 
-describe('bar 4, the fill', () => {
-  const bar = () => cycleBar(3)
+describe('the fill bar', () => {
+  const bar = () => cycleBar(FILL_BAR)
 
   it.each(FILL_EXPECTED.map((hits, step) => [step, hits] as const))(
     'plays step %i exactly as the table writes it',
     (step, hits) => {
-      expect(hitsAt(STRAIGHT_FUNK, STRAIGHT_FUNK_STEPS * 3 + step, true)).toEqual(hits)
+      expect(hitsAt(STRAIGHT_FUNK, STRAIGHT_FUNK_STEPS * FILL_BAR + step, true)).toEqual(hits)
     },
   )
 
@@ -281,15 +289,22 @@ describe('bar 4, the fill', () => {
 
 describe('step 15 across the cycle, the spine of the design', () => {
   it('states one step at three levels, each at least seven times the jitter', () => {
-    const spine = [0, 1, 2, 3].map((bar) => velocitiesIn([cycleBar(bar)[15]], 'snare')[0])
+    const spine = Array.from({ length: BARS_PER_CYCLE }, (_, bar) =>
+      velocitiesIn([cycleBar(bar)[15]], 'snare')[0],
+    )
 
-    expect(spine).toEqual([GHOST_VELOCITY, 0.66, GHOST_VELOCITY, 0.94])
+    expect(spine[LIGHT_BAR]).toBe(0.66)
+    expect(spine[FILL_BAR]).toBe(0.94)
+    expect(
+      spine.filter((_, bar) => bar !== LIGHT_BAR && bar !== FILL_BAR),
+    ).toEqual(Array.from({ length: BARS_PER_CYCLE - 2 }, () => GHOST_VELOCITY))
+    expect(new Set(spine).size).toBe(3)
 
     const jitterDb = DYNAMIC_RANGE_DB * STRAIGHT_FUNK_HUMANIZE.velocityJitter
 
     for (const [low, high] of [
-      [spine[0], spine[1]],
-      [spine[1], spine[3]],
+      [spine[0], spine[LIGHT_BAR]],
+      [spine[LIGHT_BAR], spine[FILL_BAR]],
     ]) {
       expect(DYNAMIC_RANGE_DB * (high - low)).toBeGreaterThanOrEqual(7 * jitterDb - 1e-9)
     }
@@ -343,7 +358,7 @@ describe("the fill's ladder against the kit's velocity layers", () => {
 })
 
 describe('with variations off', () => {
-  it('reproduces V6 single bar for every step of all four bar positions', () => {
+  it('reproduces the V6 single bar for every step of every bar position', () => {
     for (let step = 0; step < STRAIGHT_FUNK_STEPS * BARS_PER_CYCLE * 3; step += 1) {
       expect(hitsAt(STRAIGHT_FUNK, step, false), `step ${step}`).toEqual(EXPECTED[step % STRAIGHT_FUNK_STEPS])
     }

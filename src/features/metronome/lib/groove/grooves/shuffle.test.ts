@@ -21,7 +21,7 @@ const barOf = (lines: readonly Line[]): readonly (readonly Hit[])[] =>
       .sort((a, b) => VOICE_ORDER.indexOf(a.voice) - VOICE_ORDER.indexOf(b.voice)),
   )
 
-/** `specs/12-shuffle/spec.md` § The musician's findings, bar 1 / 3. */
+/** `specs/12-shuffle/spec.md` § The musician's findings, the ordinary bar. */
 const ORDINARY: readonly (readonly Hit[])[] = [
   [
     { voice: 'kick', velocity: 0.95 },
@@ -84,9 +84,9 @@ const FILL: readonly (readonly Hit[])[] = [
 ]
 
 const BARS = [
-  ['bar 1 / 3, ordinary', ORDINARY, () => barOf(SHUFFLE.ordinary[0])],
-  ['bar 2, the light one', LIGHT, () => barOf(SHUFFLE.light)],
-  ['bar 4, the fill', FILL, () => barOf(SHUFFLE.fill)],
+  ['the ordinary bar', ORDINARY, () => barOf(SHUFFLE.ordinary[0])],
+  ['the light bar', LIGHT, () => barOf(SHUFFLE.light)],
+  ['the fill bar', FILL, () => barOf(SHUFFLE.fill)],
 ] as const
 
 const stepsIn = (bar: readonly (readonly Hit[])[], voice: VoiceName) =>
@@ -148,7 +148,7 @@ describe('shuffle, as a definition', () => {
   })
 })
 
-describe('bar 1 / 3, the ordinary bar', () => {
+describe('the ordinary bar', () => {
   const bar = () => barOf(SHUFFLE.ordinary[0])
 
   it.each(ORDINARY.map((hits, step) => [step, hits] as const))(
@@ -233,7 +233,7 @@ describe('the bar line, which is structural here rather than a velocity', () => 
   })
 })
 
-describe('bar 2, the light one', () => {
+describe('the light bar', () => {
   const bar = () => barOf(SHUFFLE.light)
 
   it.each(LIGHT.map((hits, step) => [step, hits] as const))(
@@ -271,7 +271,7 @@ describe('bar 2, the light one', () => {
   })
 })
 
-describe('bar 4, the fill', () => {
+describe('the fill bar', () => {
   const bar = () => barOf(SHUFFLE.fill)
 
   it.each(FILL.map((hits, step) => [step, hits] as const))(
@@ -309,7 +309,7 @@ describe('bar 4, the fill', () => {
     expect(stepsIn(bar(), 'hatOpen')).toEqual([10])
   })
 
-  it('opens the hat at the level bar 2 opens it, so the preview matches', () => {
+  it('opens the hat at the level the light bar opens it, so the preview matches', () => {
     expect(velocitiesIn([bar()[10]], 'hatOpen')).toEqual(
       velocitiesIn([barOf(SHUFFLE.light)[10]], 'hatOpen'),
     )
@@ -363,8 +363,8 @@ describe('the three departures from rock, each of them derived', () => {
   })
 
   it.each([
-    ['bar 2, the light one', () => barOf(SHUFFLE.light), () => barOf(ROCK.light)],
-    ['bar 4, the fill', () => barOf(SHUFFLE.fill), () => barOf(ROCK.fill)],
+    ['the light bar', () => barOf(SHUFFLE.light), () => barOf(ROCK.light)],
+    ['the fill bar', () => barOf(SHUFFLE.fill), () => barOf(ROCK.fill)],
   ])('drops the hat rung to 0.78 and the open hat to 0.76 in %s', (_name, mine, theirs) => {
     expect(new Set(velocitiesIn(mine(), 'hatClosed'))).toEqual(new Set([0.9, 0.78]))
     expect(new Set(velocitiesIn(theirs(), 'hatClosed'))).toEqual(new Set([0.9, 0.82]))
