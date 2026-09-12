@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { MAX_BPM, MIN_BPM } from '../transport/tempo'
 import {
   DEFAULT_BPM,
+  DEFAULT_COUNT_IN,
   DEFAULT_FILLS,
   DEFAULT_SETUP,
   DEFAULT_SOURCE,
@@ -43,18 +44,21 @@ const stored = (value: unknown) => {
 }
 
 describe('a first visit', () => {
-  it('opens at 100 bpm on the click, with fills on', () => {
+  it('opens at 100 bpm on the click, with fills on and the count-in off', () => {
     expect(readSetup(fakeStorage())).toEqual({
       bpm: 100,
       source: 'click',
       fills: true,
+      countIn: false,
     })
     expect(DEFAULT_BPM).toBe(100)
     expect(DEFAULT_FILLS).toBe(true)
+    expect(DEFAULT_COUNT_IN).toBe(false)
     expect(DEFAULT_SETUP).toEqual({
       bpm: DEFAULT_BPM,
       source: DEFAULT_SOURCE,
       fills: DEFAULT_FILLS,
+      countIn: DEFAULT_COUNT_IN,
     })
   })
 
@@ -69,31 +73,39 @@ describe('a first visit', () => {
 describe('a round trip', () => {
   it('gives back what went in', () => {
     const storage = fakeStorage()
-    writeSetup({ bpm: 137, source: 'straight-funk', fills: false }, storage)
+    writeSetup(
+      { bpm: 137, source: 'straight-funk', fills: false, countIn: true },
+      storage,
+    )
 
     expect(readSetup(storage)).toEqual({
       bpm: 137,
       source: 'straight-funk',
       fills: false,
+      countIn: true,
     })
   })
 
   it('stores the version alongside, so a later shape can tell itself apart', () => {
     const storage = fakeStorage()
-    writeSetup({ bpm: 120, source: 'click', fills: true }, storage)
+    writeSetup(
+      { bpm: 120, source: 'click', fills: true, countIn: false },
+      storage,
+    )
 
     expect(JSON.parse(storage.raw() ?? '{}')).toEqual({
       version: SETUP_VERSION,
       bpm: 120,
       source: 'click',
       fills: true,
+      countIn: false,
     })
   })
 
   it('keeps both edges of the legal range', () => {
     for (const bpm of [MIN_BPM, MAX_BPM]) {
       const storage = fakeStorage()
-      writeSetup({ bpm, source: 'click', fills: true }, storage)
+      writeSetup({ bpm, source: 'click', fills: true, countIn: false }, storage)
 
       expect(readSetup(storage).bpm, `${bpm}`).toBe(bpm)
     }
@@ -110,6 +122,7 @@ describe('each value falls back on its own', () => {
       bpm: DEFAULT_BPM,
       source: 'straight-funk',
       fills: DEFAULT_FILLS,
+      countIn: DEFAULT_COUNT_IN,
     })
   })
 
@@ -124,6 +137,7 @@ describe('each value falls back on its own', () => {
       bpm: 140,
       source: DEFAULT_SOURCE,
       fills: DEFAULT_FILLS,
+      countIn: DEFAULT_COUNT_IN,
     })
   })
 
@@ -142,24 +156,41 @@ describe('each value falls back on its own', () => {
 })
 
 describe('the stored shape', () => {
-  it('stays at version 1, because V8 added a field instead of changing the shape', () => {
+  it('stays at version 1, because V8 and V9 added fields instead of changing the shape', () => {
     // Every other case here writes AND reads through SETUP_VERSION, so a bump
     // would leave them all green while silently discarding every stored tempo
-    // in the wild. V8 added `fills` with a per-value default, which is exactly
-    // the case the per-value fallback exists for and exactly what a bump is
-    // not for. Pinning the literal is what makes a future bump fail here, with
-    // this reason attached, rather than in four component tests that do not
-    // say why.
+    // in the wild. V8 added `fills` and V9 added `countIn`, each with a
+    // per-value default, which is exactly the case the per-value fallback
+    // exists for and exactly what a bump is not for. Pinning the literal is
+    // what makes a future bump fail here, with this reason attached, rather
+    // than in four component tests that do not say why.
     expect(SETUP_VERSION).toBe(1)
   })
 
-  it('reads a record at the pinned version, whatever the constant later becomes', () => {
+  it('reads a V7-shaped record complete, whatever the constant later becomes', () => {
     const storage = stored({ version: 1, bpm: 137, source: 'straight-funk' })
 
     expect(readSetup(storage)).toEqual({
       bpm: 137,
       source: 'straight-funk',
       fills: true,
+      countIn: false,
+    })
+  })
+
+  it('reads a V8-shaped record complete, whatever the constant later becomes', () => {
+    const storage = stored({
+      version: 1,
+      bpm: 137,
+      source: 'straight-funk',
+      fills: false,
+    })
+
+    expect(readSetup(storage)).toEqual({
+      bpm: 137,
+      source: 'straight-funk',
+      fills: false,
+      countIn: false,
     })
   })
 })
@@ -167,7 +198,10 @@ describe('the stored shape', () => {
 describe('the fills toggle', () => {
   it('keeps a box that was unticked', () => {
     const storage = fakeStorage()
-    writeSetup({ bpm: 120, source: 'straight-funk', fills: false }, storage)
+    writeSetup(
+      { bpm: 120, source: 'straight-funk', fills: false, countIn: false },
+      storage,
+    )
 
     expect(readSetup(storage).fills).toBe(false)
   })
@@ -184,6 +218,7 @@ describe('the fills toggle', () => {
       bpm: 137,
       source: 'straight-funk',
       fills: DEFAULT_FILLS,
+      countIn: DEFAULT_COUNT_IN,
     })
   })
 
@@ -202,6 +237,7 @@ describe('the fills toggle', () => {
         bpm: 137,
         source: 'straight-funk',
         fills: DEFAULT_FILLS,
+        countIn: DEFAULT_COUNT_IN,
       })
     }
   })
@@ -220,6 +256,84 @@ describe('the fills toggle', () => {
       bpm: DEFAULT_BPM,
       source: 'straight-funk',
       fills: false,
+      countIn: DEFAULT_COUNT_IN,
+    })
+  })
+})
+
+describe('the count-in box', () => {
+  it('is off for a player who has never touched it', () => {
+    expect(readSetup(fakeStorage()).countIn).toBe(false)
+  })
+
+  it('keeps a box that was ticked', () => {
+    const storage = fakeStorage()
+    writeSetup(
+      { bpm: 120, source: 'straight-funk', fills: true, countIn: true },
+      storage,
+    )
+
+    expect(readSetup(storage).countIn).toBe(true)
+  })
+
+  it('reads a record written before the field existed as count-in off', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 137,
+        source: 'straight-funk',
+        fills: false,
+      }),
+    )
+
+    expect(setup).toEqual({
+      bpm: 137,
+      source: 'straight-funk',
+      fills: false,
+      countIn: false,
+    })
+  })
+
+  it('resets a countIn that is the wrong type and keeps the other three', () => {
+    // The cross-contamination case: everything beside it is good and stays
+    // good, which is the whole reason the version is not bumped for a field
+    // that has a default.
+    for (const countIn of ['true', 'false', 0, 1, null, {}, []]) {
+      const setup = readSetup(
+        stored({
+          version: SETUP_VERSION,
+          bpm: 137,
+          source: 'straight-funk',
+          fills: false,
+          countIn,
+        }),
+      )
+
+      expect(setup, JSON.stringify(countIn)).toEqual({
+        bpm: 137,
+        source: 'straight-funk',
+        fills: false,
+        countIn: DEFAULT_COUNT_IN,
+      })
+    }
+  })
+
+  it('survives a bad tempo and an unknown groove beside it', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 9999,
+        source: 'a-groove-we-removed',
+        fills: false,
+        countIn: true,
+      }),
+    )
+
+    expect(setup).toEqual({
+      bpm: DEFAULT_BPM,
+      source: DEFAULT_SOURCE,
+      fills: false,
+      countIn: true,
     })
   })
 })
@@ -277,7 +391,10 @@ describe('storage that will not cooperate', () => {
     })
 
     expect(() =>
-      writeSetup({ bpm: 120, source: 'click', fills: true }, storage),
+      writeSetup(
+        { bpm: 120, source: 'click', fills: true, countIn: false },
+        storage,
+      ),
     ).not.toThrow()
   })
 
@@ -294,7 +411,7 @@ describe('storage that will not cooperate', () => {
     expect(() => readSetup()).not.toThrow()
     expect(readSetup()).toEqual(DEFAULT_SETUP)
     expect(() =>
-      writeSetup({ bpm: 120, source: 'click', fills: true }),
+      writeSetup({ bpm: 120, source: 'click', fills: true, countIn: false }),
     ).not.toThrow()
 
     vi.unstubAllGlobals()

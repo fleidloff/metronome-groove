@@ -437,6 +437,39 @@ describe('the groove comes back to the grid', () => {
     )
   })
 
+  it('indexes takes on the step the source names, not on its own', () => {
+    const fake = testClock(0, {})
+    const shifted = oneVoiceGroove(HUMANIZE)
+    const scheduler = createScheduler({
+      clock: fake.clock,
+      bpm: 100,
+      // A source whose timeline sits one bar behind the scheduler's, which is
+      // what a count-in makes of the groove underneath it.
+      source: { ...shifted, takeStep: (step) => step - STEPS_PER_BAR },
+      lookaheadS: 4,
+    })
+    scheduler.start()
+
+    expect(fake.steps().slice(0, STEPS_PER_BAR)).toEqual(
+      Array.from({ length: STEPS_PER_BAR }, (_, step) => step - STEPS_PER_BAR),
+    )
+  })
+
+  it('indexes takes on its own step when the source names none', () => {
+    const fake = testClock(0, {})
+    const scheduler = createScheduler({
+      clock: fake.clock,
+      bpm: 100,
+      source: oneVoiceGroove(HUMANIZE),
+      lookaheadS: 4,
+    })
+    scheduler.start()
+
+    expect(fake.steps().slice(0, STEPS_PER_BAR)).toEqual(
+      Array.from({ length: STEPS_PER_BAR }, (_, step) => step),
+    )
+  })
+
   it('schedules the same times however the lookahead window falls', () => {
     const bpm = 100
     const seconds = stepSeconds(bpm, STEPS_PER_BAR)

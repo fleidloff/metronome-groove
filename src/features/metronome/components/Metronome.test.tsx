@@ -34,6 +34,7 @@ function fakeTransport() {
   const resume = vi.fn()
   const select = vi.fn()
   const setFills = vi.fn()
+  const setCountIn = vi.fn()
   const unsubscribe = vi.fn()
   const loadingListeners = new Set<(loading: boolean) => void>()
 
@@ -45,6 +46,7 @@ function fakeTransport() {
     resume,
     select,
     setFills,
+    setCountIn,
     onBeat(listener) {
       listeners.add(listener)
       return () => {
@@ -80,6 +82,7 @@ function fakeTransport() {
     resume,
     select,
     setFills,
+    setCountIn,
     unsubscribe,
     beat,
     loading,
@@ -1077,6 +1080,181 @@ describe(app.name, () => {
       pick(GROOVE)
 
       expect(box()).not.toBeChecked()
+    })
+  })
+
+  describe('the count-in toggle', () => {
+    const GROOVE = 'straight-funk'
+
+    const picker = () => screen.getByRole('combobox', { name: metronome.sound })
+    const box = () => screen.queryByRole('checkbox', { name: metronome.countIn })
+    const pick = (value: string) =>
+      fireEvent.change(picker(), { target: { value } })
+
+    it('is absent from the page while the click is selected', () => {
+      render(<Metronome />)
+
+      // A count-in on the click would be four claves before four claves, so
+      // there is nothing here to offer.
+      expect(box()).toBeNull()
+    })
+
+    it('arrives with the groove, unticked', () => {
+      render(<Metronome />)
+
+      pick(GROOVE)
+
+      expect(box()).toBeVisible()
+      expect(box()).not.toBeChecked()
+    })
+
+    it('goes again when the click comes back', () => {
+      render(<Metronome />)
+
+      pick(GROOVE)
+      pick('click')
+
+      expect(box()).toBeNull()
+    })
+
+    it('sits below Play beside the fills box, and neither pushes Play down', () => {
+      render(<Metronome />)
+      pick(GROOVE)
+
+      const play = screen.getByRole('button', { name: metronome.start })
+      const fills = screen.getByRole('checkbox', { name: metronome.fills })
+      const toggle = box()!
+      const credit = screen.getByText(app.sampleCredit)
+
+      expect(
+        play.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(toggle.contains(play)).toBe(false)
+      expect(
+        fills.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        toggle.compareDocumentPosition(credit) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(credit.nextElementSibling).toBeNull()
+    })
+
+    it('tells the transport, which latches it at the next start', () => {
+      const { transport, setCountIn, stop, start } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+
+      expect(setCountIn).toHaveBeenLastCalledWith(true)
+      expect(box()).toBeChecked()
+      // Nothing is restarted to say it: the transport reads the field when a
+      // press of Start arms the run.
+      expect(stop).not.toHaveBeenCalled()
+      expect(start).not.toHaveBeenCalled()
+    })
+
+    it('tells it again when the box goes back off', () => {
+      const { transport, setCountIn } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+      fireEvent.click(box()!)
+
+      expect(setCountIn).toHaveBeenLastCalledWith(false)
+      expect(box()).not.toBeChecked()
+    })
+
+    it('is a gesture like any other, so it arms the speaker button', () => {
+      const { transport } = fakeTransport()
+      const handlers = new Map<string, () => void>()
+      vi.stubGlobal('navigator', {
+        ...globalThis.navigator,
+        mediaSession: {
+          setActionHandler: (action: string, handler: (() => void) | null) => {
+            if (handler === null) handlers.delete(action)
+            else handlers.set(action, handler)
+          },
+          metadata: null,
+          playbackState: 'none',
+        },
+      })
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+
+      expect(handlers.size).toBe(1)
+      vi.unstubAllGlobals()
+    })
+
+    it('round-trips through the one setup record, beside the tempo, groove and fills', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(screen.getByRole('slider', { name: metronome.tempo }), {
+        target: { value: '137' },
+      })
+      pick(GROOVE)
+      fireEvent.click(screen.getByRole('checkbox', { name: metronome.fills }))
+      fireEvent.click(box()!)
+
+      expect(
+        JSON.parse(window.localStorage.getItem(SETUP_KEY) ?? '{}'),
+      ).toMatchObject({ bpm: 137, source: GROOVE, fills: false, countIn: true })
+      expect(window.localStorage.length).toBe(1)
+
+      cleanup()
+      render(<Metronome transport={transport} />)
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        `137 ${metronome.tempoUnit}`,
+      )
+      expect(picker()).toHaveValue(GROOVE)
+      expect(screen.getByRole('checkbox', { name: metronome.fills })).not.toBeChecked()
+      expect(box()).toBeChecked()
+    })
+
+    it('opens unticked from a record written before the field existed', () => {
+      // A V7- or V8-shaped record carries no `countIn` key, and the per-value
+      // fallback is what lets it read back complete rather than costing
+      // everyone the tempo a version bump would have discarded.
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: GROOVE, fills: false }),
+      )
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(box()).not.toBeChecked()
+      expect(screen.getByRole('status')).toHaveTextContent(
+        `120 ${metronome.tempoUnit}`,
+      )
+    })
+
+    it('tells the transport about a restored box, not just the checkbox', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: GROOVE, countIn: true }),
+      )
+      const { transport, setCountIn } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      // A restore goes around the handlers, exactly as it does for the groove.
+      expect(setCountIn).toHaveBeenLastCalledWith(true)
+    })
+
+    it('keeps the setting across a trip to the click and back', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+      pick('click')
+      pick(GROOVE)
+
+      expect(box()).toBeChecked()
     })
   })
 

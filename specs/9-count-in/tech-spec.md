@@ -142,12 +142,59 @@ field that has a perfectly good default — which is the reasoning
 [ADR 0009](../../docs/adr/0009-the-setup-lives-in-the-browser.md) already
 settled.
 
+### `Source.takeStep` — added mid-build, and why
+
+**This contract was wrong when it was written.** It said `transport/` stays
+untouched. Track A's red step found that round-robin take selection does not go
+through the source at all:
+
+```ts
+// scheduler.ts
+clock.schedule(at, hit, { step, gain: source.trim?.(hit, step) ?? 1 })
+// audioClock.ts
+const take = voice.takeFor(hit.velocity, placement.step)
+// kit.ts
+urls[absoluteStep % urls.length]   // three takes
+```
+
+The raw scheduler step reaches the device. With a count bar the groove's first
+bar is scheduled at steps 16–31, so takes are picked for 16–31 — a rotation of
+one in three that persists for the whole run. `displace` and `trim` are already
+correct, because the wrapper offsets those itself; only take selection leaks.
+
+So `Source` gains one optional member:
+
+```ts
+/**
+ * The step the device indexes round-robin takes on. Absolute, and the grid
+ * step unless a source shifts its own timeline — a count-in maps it back, so
+ * the groove's first sounding bar draws the takes it would have drawn had it
+ * started from silence.
+ */
+takeStep?(step: number): number
+```
+
+and `scheduler.ts` changes by one expression:
+
+```ts
+clock.schedule(at, hit, {
+  step: source.takeStep?.(step) ?? step,
+  gain: source.trim?.(hit, step) ?? 1,
+})
+```
+
+**The scheduler still knows nothing about count-ins.** It asks the source which
+step to index takes on, exactly as it already asks how far to displace a hit —
+which is the shape ADR 0007 chose for `displace` and the reason that one was
+right. The wrapper implements `takeStep` as `step - steps` when armed and past
+the count bar, `step` otherwise, and delegates to `inner.takeStep` if the inner
+has one.
+
 ### What must not change
 
-`transport/scheduler.ts`, `transport/audioClock.ts`, `transport/source.ts`,
-`groove/*` and `click/pattern.ts` are untouched. **If the change wants an edit
-in `transport/`, the boundary is in the wrong place** — the whole point of
-wrapping a `Source` is that the timeline stays in one place that already works.
+`transport/audioClock.ts`, `groove/*` and `click/pattern.ts` are untouched, and
+the edit to `transport/` is the two above and nothing else. The timeline stays
+in one place that already works.
 
 ## Epics
 

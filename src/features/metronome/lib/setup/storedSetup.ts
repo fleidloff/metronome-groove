@@ -22,16 +22,25 @@ export const DEFAULT_SOURCE: SourceId = 'click'
  */
 export const DEFAULT_FILLS = true
 
+/**
+ * Off, unlike `fills`. The count-in is for playing along from a standing
+ * start, and someone looping a groove to practise over does not want to hear
+ * it on every restart.
+ */
+export const DEFAULT_COUNT_IN = false
+
 export interface Setup {
   readonly bpm: number
   readonly source: SourceId
   readonly fills: boolean
+  readonly countIn: boolean
 }
 
 export const DEFAULT_SETUP: Setup = {
   bpm: DEFAULT_BPM,
   source: DEFAULT_SOURCE,
   fills: DEFAULT_FILLS,
+  countIn: DEFAULT_COUNT_IN,
 }
 
 const storageOf = (given?: Storage) => {
@@ -95,6 +104,8 @@ export function readSetup(storage?: Storage): Setup {
     // per-value fallback is what lets it read back complete rather than
     // costing everyone the tempo a version bump would have discarded.
     fills: typeof stored.fills === 'boolean' ? stored.fills : DEFAULT_FILLS,
+    countIn:
+      typeof stored.countIn === 'boolean' ? stored.countIn : DEFAULT_COUNT_IN,
   }
 }
 

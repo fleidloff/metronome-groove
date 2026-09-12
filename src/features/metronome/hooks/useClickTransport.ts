@@ -16,6 +16,7 @@ import {
   sampleUrlFor,
   type KitVoiceName,
 } from '../lib/groove/kit'
+import { createCountInSource } from '../lib/countIn/source'
 import { createStraightFunkSource } from '../lib/groove/source'
 import { createAudioClock, type VoiceBank } from '../lib/transport/audioClock'
 import {
@@ -46,6 +47,9 @@ export type AudioFactory = (
   /** Read per step by the groove, so unticking the box lands on the next
    *  unqueued step rather than needing a device to be built again. */
   variations: () => boolean,
+  /** Latched at Start rather than read live, so the answer cannot change
+   *  inside a run — it decides where the groove's timeline begins. */
+  countIn: () => boolean,
 ) => Promise<Audio>
 
 /**
@@ -111,26 +115,49 @@ const buildKitBank = async (context: AudioContext): Promise<VoiceBank> => {
 /**
  * The click declines variations the same way it declines humanize: it is not
  * given them at all, so `CLICK_SOURCE` never learns what a bar is.
+ *
+ * The count-in is the same shape of refusal, and it is the whole guarantee that
+ * no count can precede the click: the wrapper is never reached rather than
+ * branching inside itself. Exported because nothing the transport does is
+ * observably different for a wrapped click — it would count four claves and
+ * then play four claves — so identity is the only assertion there is.
  */
-const sourceFor = (id: SourceId, variations: () => boolean): Source =>
-  id === 'click' ? CLICK_SOURCE : createStraightFunkSource({ variations })
+export const sourceFor = (
+  id: SourceId,
+  variations: () => boolean,
+  countIn: () => boolean,
+): Source =>
+  id === 'click'
+    ? CLICK_SOURCE
+    : createCountInSource(createStraightFunkSource({ variations }), countIn)
 
 /**
  * The transport plus its third state. `suspend` puts the click between running
  * and stopped — silent, but remembered — so a tapped tempo can bring it back
  * on its own rather than asking the player to press start a second time.
  */
-const buildRealAudio: AudioFactory = async (bpm, id, variations) => {
+export const buildRealAudio: AudioFactory = async (bpm, id, variations, countIn) => {
   const context = new AudioContext()
 
   try {
-    const bank = id === 'click' ? await buildClavesBank(context) : await buildKitBank(context)
+    // A groove's device decodes the claves too: the count-in borrows the
+    // click's voice, and a voice the groove never uses is the only thing that
+    // states the seam. `claves` gets no entry in `KIT_CHOKES` — it silences
+    // nothing and nothing silences it.
+    const bank =
+      id === 'click'
+        ? await buildClavesBank(context)
+        : { ...(await buildClavesBank(context)), ...(await buildKitBank(context)) }
     const clock = createAudioClock(context, bank)
 
     return {
       context,
       clock,
-      scheduler: createScheduler({ clock, bpm, source: sourceFor(id, variations) }),
+      scheduler: createScheduler({
+        clock,
+        bpm,
+        source: sourceFor(id, variations, countIn),
+      }),
     }
   } catch (reason) {
     await context.close()
@@ -178,6 +205,15 @@ export function useClickTransport(
      * no restart.
      */
     fills: true,
+    /** What the checkbox says. Read only by `begin`, which is what keeps a
+     *  flip mid-bar out of the run it would have shifted. */
+    countIn: false,
+    /**
+     * What this run was started with. Written by `begin` and by nothing else,
+     * so the getter the source reads per step cannot change its answer inside
+     * one run — the count bar decides where the groove's timeline begins.
+     */
+    countInArmed: false,
     /** Whether a device is being built right now. The start control reads it,
      *  so a press during the load says it is waiting instead of sounding a
      *  silent bar. */
@@ -288,7 +324,12 @@ export function useClickTransport(
 
       announceLoading(true)
 
-      const attempt = buildAudio(live.bpm, live.sourceId, () => live.fills).then(
+      const attempt = buildAudio(
+        live.bpm,
+        live.sourceId,
+        () => live.fills,
+        () => live.countInArmed,
+      ).then(
         (built) => {
           settle()
           return receive(mine)(built)
@@ -307,8 +348,13 @@ export function useClickTransport(
      * Everything a run needs, shared by `start` and `resume`. A resume is a
      * start the player did not have to press — the only difference is what
      * decides it may happen.
+     *
+     * `armCountIn` is an argument rather than a field read here, which is what
+     * keeps the three entry paths honest: only a press of Start counts a bar
+     * in, and the tap-tempo return and the mid-run switch are already in time.
      */
-    const begin = (next: number) => {
+    const begin = (next: number, armCountIn: boolean) => {
+      live.countInArmed = armCountIn && live.countIn
       live.bpm = clampTempo(next)
       live.running = true
       const mine = live.generation
@@ -364,7 +410,7 @@ export function useClickTransport(
     return {
       start(next: number) {
         live.suspended = false
-        begin(next)
+        begin(next, true)
       },
 
       stop() {
@@ -384,7 +430,7 @@ export function useClickTransport(
       resume(next: number) {
         if (!live.suspended) return
         live.suspended = false
-        begin(next)
+        begin(next, false)
       },
 
       /**
@@ -404,7 +450,7 @@ export function useClickTransport(
         live.sourceId = next
 
         if (wasRunning) {
-          begin(live.bpm)
+          begin(live.bpm, false)
           return
         }
 
@@ -427,6 +473,15 @@ export function useClickTransport(
        */
       setFills(on: boolean) {
         live.fills = on
+      },
+
+      /**
+       * One field, like `setFills` — but read by `begin` rather than by the
+       * source, so a change lands on the next run rather than on the next
+       * queued step.
+       */
+      setCountIn(on: boolean) {
+        live.countIn = on
       },
 
       onBeat(listener: (beat: number) => void) {

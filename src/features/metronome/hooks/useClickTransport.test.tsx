@@ -1,8 +1,14 @@
 import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { STEPS_PER_BAR } from '@/lib/steps'
 import type { Transport } from '../components/Metronome'
+import { CLAVES_SAMPLE_URL } from '../lib/click/claves'
+import { CLICK_SOURCE } from '../lib/click/source'
+import { KIT_SAMPLE_URLS } from '../lib/groove/kit'
 import type { SourceId } from '../lib/transport/source'
 import {
+  buildRealAudio,
+  sourceFor,
   useClickTransport,
   type Audio,
   type AudioFactory,
@@ -345,9 +351,9 @@ describe('the transport carrying the fills setting', () => {
    *  the way the scheduler does — once per queued step. */
   function watched(device: ReturnType<typeof fakeAudio>) {
     const given: (() => boolean)[] = []
-    const factory: AudioFactory = (bpm, source, variations) => {
+    const factory: AudioFactory = (bpm, source, variations, countIn) => {
       given.push(variations)
-      return device.factory(bpm, source, variations)
+      return device.factory(bpm, source, variations, countIn)
     }
     return { factory, given }
   }
@@ -549,5 +555,278 @@ describe('the transport choosing what it plays', () => {
 
     expect(device.start).not.toHaveBeenCalled()
     expect(vi.mocked(globalThis.requestAnimationFrame)).not.toHaveBeenCalled()
+  })
+})
+
+describe('the transport arming the count-in', () => {
+  const GROOVE: SourceId = 'straight-funk'
+
+  /**
+   * Keeps the getter the hook hands the source, so a test reads the latch the
+   * way the wrapper does — per queued step, through the factory, rather than by
+   * reaching into the session.
+   */
+  function watched(device: ReturnType<typeof fakeAudio>) {
+    const given: (() => boolean)[] = []
+    const factory: AudioFactory = (bpm, source, variations, countIn) => {
+      given.push(countIn)
+      return device.factory(bpm, source, variations, countIn)
+    }
+    return { factory, armed: () => given[given.length - 1]() }
+  }
+
+  it('arms the run when start is pressed with the box ticked', async () => {
+    const device = fakeAudio()
+    const { factory, armed } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().setCountIn?.(true))
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await settle()
+
+    expect(armed()).toBe(true)
+  })
+
+  it('leaves the run unarmed when the box is unticked', async () => {
+    const device = fakeAudio()
+    const { factory, armed } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await settle()
+
+    // Off on a first visit, and a start that was never told otherwise counts
+    // nothing in.
+    expect(armed()).toBe(false)
+  })
+
+  it('never arms the tap-tempo return, even with the box ticked', async () => {
+    const device = fakeAudio()
+    const { factory, armed } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().setCountIn?.(true))
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await settle()
+    expect(armed()).toBe(true)
+
+    act(() => transport().suspend())
+    act(() => transport().resume(96))
+    await settle()
+
+    // Four claves before every tapped return is what would stop someone
+    // tapping at all.
+    expect(armed()).toBe(false)
+  })
+
+  it('never arms a source switch made mid-run, even with the box ticked', async () => {
+    const device = fakeAudio()
+    const { factory, armed } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().setCountIn?.(true))
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    await settle()
+
+    // The bar is already running: a count here would put the click back in the
+    // middle of the thing that was just switched away from.
+    expect(armed()).toBe(false)
+  })
+
+  it('cannot be changed inside a run, and picks the new value up on the next start', async () => {
+    const device = fakeAudio()
+    const { factory, armed } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().setCountIn?.(true))
+    act(() => transport().start(120))
+    await settle()
+    expect(armed()).toBe(true)
+
+    // Unlike fills, which lands on the next unqueued step: this one decides
+    // where the groove's timeline begins, so a flip mid-bar would shift the
+    // groove against itself.
+    act(() => transport().setCountIn?.(false))
+    expect(armed()).toBe(true)
+
+    act(() => transport().stop())
+    act(() => transport().start(120))
+    await settle()
+    expect(armed()).toBe(false)
+  })
+
+  it('takes the box back into account without a device being rebuilt', async () => {
+    const device = fakeAudio()
+    const { factory, armed } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await settle()
+    act(() => transport().stop())
+
+    act(() => transport().setCountIn?.(true))
+    act(() => transport().start(120))
+    await settle()
+
+    expect(armed()).toBe(true)
+    expect(device.built.count).toBe(1)
+  })
+})
+
+describe('what the transport builds for real', () => {
+  /**
+   * A device that records the sample every scheduled hit reaches for, so what
+   * is in a bank can be read from what sounded. Nothing here decodes audio: a
+   * fetched url stands in for its own buffer.
+   */
+  function fakeDevice() {
+    const started: { url: string; at: number }[] = []
+    const clock = { now: 0 }
+
+    const gain = () => ({
+      value: 0,
+      cancelScheduledValues: () => {},
+      setValueAtTime: () => {},
+      linearRampToValueAtTime: () => {},
+    })
+
+    class FakeContext {
+      state = 'running'
+      destination = {}
+      get currentTime() {
+        return clock.now
+      }
+      resume = () => Promise.resolve()
+      close = () => Promise.resolve()
+      decodeAudioData = (data: unknown) => Promise.resolve(data as AudioBuffer)
+      createGain = () => ({ gain: gain(), connect: (to: unknown) => to })
+      createBufferSource = () => {
+        const source = {
+          buffer: null as string | null,
+          onended: null as (() => void) | null,
+          connect: (to: unknown) => to,
+          start: (at: number) => started.push({ url: source.buffer ?? '', at }),
+          stop: () => {},
+        }
+        return source
+      }
+    }
+
+    vi.stubGlobal('AudioContext', FakeContext)
+    vi.stubGlobal('fetch', (url: string) =>
+      Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(url) }),
+    )
+
+    return { started, clock }
+  }
+
+  /** Ticks a whole number of bars at 120 bpm, a step at a time, so no step is
+   *  ever dropped as overtaken. */
+  const run = (audio: Audio, device: { clock: { now: number } }, seconds: number) => {
+    audio.scheduler.start()
+    for (let at = 0; at <= seconds; at += 0.05) {
+      device.clock.now = at
+      audio.scheduler.tick()
+    }
+  }
+
+  it('never wraps the click, so no path can put a count-in in front of it', () => {
+    // Behaviour cannot settle this: a wrapped click would count four claves
+    // and then play four claves, which sounds the same. The guarantee is that
+    // the wrapper is never reached, so that is what is asserted.
+    expect(sourceFor('click', () => true, () => true)).toBe(CLICK_SOURCE)
+    expect(sourceFor('straight-funk', () => true, () => true)).not.toBe(
+      CLICK_SOURCE,
+    )
+  })
+
+  it('gives the groove a bank holding the claves as well as the kit', async () => {
+    const device = fakeDevice()
+    const audio = await buildRealAudio(
+      120,
+      'straight-funk',
+      () => true,
+      () => true,
+    )
+
+    // One count bar and one bar of the groove, at 120 bpm.
+    run(audio, device, 4)
+
+    const count = device.started.slice(0, 4)
+    const groove = device.started.slice(4)
+
+    // Four claves: the bank has them, or the count bar is silent.
+    expect(count.map((hit) => hit.url)).toEqual(Array(4).fill(CLAVES_SAMPLE_URL))
+    // Then the kit, and no claves again.
+    expect(groove.length).toBeGreaterThan(0)
+    expect(groove.every((hit) => KIT_SAMPLE_URLS.includes(hit.url))).toBe(true)
+  })
+
+  it('draws the same takes with the count-in as without it', async () => {
+    // The wrapper's `takeStep` and the scheduler's forwarding of it are each
+    // pinned on their own. This is the composition: two real runs of the real
+    // device, compared by the file that actually sounded. Without `takeStep`
+    // the groove's first bar would draw takes for steps 16-31 and the two
+    // sequences would diverge at the first voice with more than one take.
+    const armedDevice = fakeDevice()
+    const armed = await buildRealAudio(120, 'straight-funk', () => true, () => true)
+    run(armed, armedDevice, 8)
+
+    const bareDevice = fakeDevice()
+    const bare = await buildRealAudio(120, 'straight-funk', () => true, () => false)
+    run(bare, bareDevice, 6)
+
+    const afterTheCount = armedDevice.started.slice(4).map((hit) => hit.url)
+    const fromSilence = bareDevice.started.map((hit) => hit.url)
+    const shared = Math.min(afterTheCount.length, fromSilence.length)
+
+    expect(shared).toBeGreaterThan(STEPS_PER_BAR)
+    expect(afterTheCount.slice(0, shared)).toEqual(fromSilence.slice(0, shared))
+  })
+
+  it('sounds none of the groove when the run is stopped inside the count bar', async () => {
+    const device = fakeDevice()
+    const audio = await buildRealAudio(120, 'straight-funk', () => true, () => true)
+
+    // The count bar is four beats at 120 bpm, so two seconds. Stop at 0.6.
+    audio.scheduler.start()
+    for (let at = 0; at <= 0.6; at += 0.05) {
+      device.clock.now = at
+      audio.scheduler.tick()
+    }
+    audio.scheduler.stop()
+    audio.clock.stopSounding()
+
+    // Keep the clock running well past where the groove would have arrived.
+    for (let at = 0.6; at <= 6; at += 0.05) {
+      device.clock.now = at
+      audio.scheduler.tick()
+    }
+
+    expect(device.started.length).toBeGreaterThan(0)
+    expect(device.started.every((hit) => hit.url === CLAVES_SAMPLE_URL)).toBe(true)
+  })
+
+  it('gives the click a bank of its own, with no kit in it', async () => {
+    const device = fakeDevice()
+    const audio = await buildRealAudio(120, 'click', () => true, () => true)
+
+    run(audio, device, 2)
+
+    expect(device.started.length).toBeGreaterThan(0)
+    expect(device.started.every((hit) => hit.url === CLAVES_SAMPLE_URL)).toBe(true)
   })
 })

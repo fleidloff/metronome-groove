@@ -34,6 +34,11 @@ export type MetronomeSnippets = {
    * variation as well, and the persona judged that irrelevant.
    */
   fills: string
+  /**
+   * The groove's count-in toggle. One bar of clicks before the groove starts,
+   * so a standing start has a stated tempo.
+   */
+  countIn: string
   /** Shown on the start control while the samples it needs are still arriving,
    *  so a press during the load reads as waiting rather than as nothing. */
   loading: string

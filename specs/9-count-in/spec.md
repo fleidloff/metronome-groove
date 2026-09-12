@@ -77,6 +77,17 @@ Started 2026-09-12 · `/vibe-with-docs`
   stop tapping."* On switching: *"I'm already in time — the bar is running …
   four claves would put the click back in the middle of the thing I just
   switched away from."*
+* **`Source` gains `takeStep`, and `transport/` is edited after all.** Found
+  during the build, not at spec time: round-robin take selection does not go
+  through the source. `scheduler.ts` puts its own raw step into `Placement` and
+  `audioClock` picks the recording with it, so a count bar would rotate the
+  groove's takes by one of three for the whole run — `## Done when` bullet 2
+  says the take sequence is identical, and the wrapper cannot make that true on
+  its own. The scheduler still learns nothing about count-ins: it asks the
+  source which step to index takes on, exactly as it already asks how far to
+  displace a hit. The alternative, narrowing bullet 2, was rejected — the
+  rotation never resolves, so the groove with the box ticked genuinely is not
+  the groove with it unticked.
 * **The count-in is never humanized.** It is a click, and
   [ADR 0007](../../docs/adr/0007-a-groove-is-humanized-a-click-is-not.md)
   already says a click is exact. Nothing in the count-in reads the groove's

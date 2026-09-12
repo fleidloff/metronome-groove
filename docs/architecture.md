@@ -87,6 +87,9 @@ The arrows, each with an import behind it:
 | `lib/tap/` → `lib/transport/` | `tapTempo.ts` reads `MIN_BPM`/`MAX_BPM` to refuse a tempo it cannot play |
 | `hooks/` → `lib/transport/` | `useClickTransport.ts` builds the scheduler and the audio clock |
 | `hooks/` → `lib/click/`, `lib/groove/` | the hook picks which `Source` is playing and builds that voice bank |
+| `hooks/` → `lib/countIn/` | the hook wraps the groove's source when a run is started with the box ticked, and never wraps the click |
+| `lib/countIn/` → `lib/click/` | **a sideways arrow between concern folders.** `countIn/source.ts` imports `CLICK_PATTERN` — the count bar is the click's own accent pattern, and a second copy of those velocities is the thing that drifts |
+| `lib/countIn/` → `lib/transport/` | `countIn/source.ts` implements the `Source` it also wraps |
 | `lib/groove/` → `lib/transport/` | `groove/source.ts` implements the `Source` the transport walks |
 | `lib/click/` → `lib/transport/` | `click/source.ts` does the same for the click |
 | `hooks/` → `components/` | **type-only**: the hook imports `Transport` from `Metronome.tsx`, pointing at its own consumer. No zone forbids it and it erases at build, but the contract would sit better in `lib/transport/` |
@@ -97,8 +100,15 @@ The arrows, each with an import behind it:
 Zone 6 enforces the one that matters: nothing in `lib/` reaches back up into
 UI, a hook or the store.
 
-The slice now holds six concern folders — `click/`, `groove/`, `remote/`,
-`setup/`, `tap/` and `transport/`.
+The slice now holds seven concern folders — `click/`, `countIn/`, `groove/`,
+`remote/`, `setup/`, `tap/` and `transport/`.
+
+**`lib/countIn/` is the second sideways arrow**, and it was weighed rather than
+added quietly. It reaches into `lib/click/` for `CLICK_PATTERN` because a
+count-in *is* the click, stated for one bar in front of something else — the
+alternative was a second copy of the accent velocities, which is worse. If a
+third folder wants `CLICK_PATTERN`, the pattern has outgrown `click/` and
+belongs in `@/lib/` beside the step grid.
 
 **`lib/remote/` is the one that**
 touches a platform API the app cannot schedule around. It owns the media

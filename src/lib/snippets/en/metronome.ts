@@ -13,5 +13,6 @@ export const metronome = {
   click: 'Click',
   straightFunk: 'Straight funk',
   fills: 'Fills',
+  countIn: 'Count-in',
   loading: 'Loading…',
 } satisfies MetronomeSnippets

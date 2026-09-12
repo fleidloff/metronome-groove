@@ -119,7 +119,10 @@ export function createScheduler({
         const target = grid + (source.displace?.(hit, step, seconds) ?? 0) - leadIn
         const at = Math.max(target, now)
 
-        clock.schedule(at, hit, { step, gain: source.trim?.(hit, step) ?? 1 })
+        clock.schedule(at, hit, {
+          step: source.takeStep?.(step) ?? step,
+          gain: source.trim?.(hit, step) ?? 1,
+        })
 
         // A hit held back to `now` is heard later than the grid says, and the
         // dot has to wait for the sound rather than for the grid.

@@ -303,6 +303,18 @@ first try.
 Note that `claves` and `rim` are near-duplicates in function — both are the dry
 high crack a groove reaches for once. A groove that uses both has neither.
 
+**`claves` does a second job since V9: it counts the groove in.** A count-in is
+one bar of the click — the same `CLICK_PATTERN` accent, the same exact grid —
+in front of a groove that has none of that voice. The seam is the feature: four
+claves, then the kit, and no claves again. A hi-hat count was rejected for the
+opposite reason, that a hat count into a hat-led groove reads as the pattern
+changing rather than as a handoff.
+
+This is also why `claves` is now decoded into a *groove's* bank and not only the
+click's. The count-in is never humanized and never swung, which
+[ADR 0007](adr/0007-a-groove-is-humanized-a-click-is-not.md) already covers: it
+is a click, and a click is exact.
+
 ---
 
 ## 5. Open questions

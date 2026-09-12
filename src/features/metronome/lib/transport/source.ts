@@ -51,6 +51,17 @@ export interface Source {
   /** Gain multiplier, applied *after* layer selection so a hit at a layer
    *  boundary cannot flicker between timbres. 1 when not humanized. */
   trim?(hit: Hit, step: number): number
+  /**
+   * The step the device indexes round-robin takes on. The grid step unless a
+   * source shifts its own timeline against the scheduler's — a count-in maps
+   * it back, so the groove's first sounding bar draws the takes it would have
+   * drawn had it started from silence.
+   *
+   * The source owns this for the same reason it owns `displace`: a transport
+   * that knew which sources shift their timeline would know about those
+   * sources.
+   */
+  takeStep?(step: number): number
 }
 
 /**

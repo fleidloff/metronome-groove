@@ -11,6 +11,7 @@ import { useRemoteControl } from '../hooks/useRemoteControl'
 import type { SourceId } from '../lib/transport/source'
 import {
   DEFAULT_BPM,
+  DEFAULT_COUNT_IN,
   DEFAULT_FILLS,
   DEFAULT_SOURCE,
   readSetup,
@@ -25,6 +26,7 @@ import {
   type TapState,
 } from '../lib/tap/tapTempo'
 import { BeatRow } from './BeatRow'
+import { CountInToggle } from './CountInToggle'
 import { FillsToggle } from './FillsToggle'
 import { SourceSelect } from './SourceSelect'
 import { StartStopButton } from './StartStopButton'
@@ -62,6 +64,15 @@ export interface Transport {
    * Optional, like `select`, so a test can drive the click alone.
    */
   setFills?(on: boolean): void
+  /**
+   * Whether a run that starts from stopped opens with a counted-in bar. Unlike
+   * `setFills` the transport latches this at Start rather than reading it per
+   * step — it decides where the groove's timeline begins, so a flip mid-bar
+   * would shift the groove against itself.
+   *
+   * Optional, like `select`, so a test can drive the click alone.
+   */
+  setCountIn?(on: boolean): void
 }
 
 /** Monotonic seconds, to match what `addTap` expects. */
@@ -88,6 +99,7 @@ export function Metronome({
   const [armed, setArmed] = useState(false)
   const [source, setSource] = useState<SourceId>(DEFAULT_SOURCE)
   const [fills, setFills] = useState(DEFAULT_FILLS)
+  const [countIn, setCountIn] = useState(DEFAULT_COUNT_IN)
   const [restored, setRestored] = useState(false)
   /** What the transport has been told, so it is not told the same thing twice. */
   const told = useRef<SourceId>(DEFAULT_SOURCE)
@@ -203,6 +215,7 @@ export function Metronome({
     setBpm(stored.bpm)
     setSource(stored.source)
     setFills(stored.fills)
+    setCountIn(stored.countIn)
     setRestored(true)
   }, [])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -238,8 +251,8 @@ export function Metronome({
    */
   useEffect(() => {
     if (!restored) return
-    writeSetup({ bpm, source, fills })
-  }, [restored, bpm, source, fills])
+    writeSetup({ bpm, source, fills, countIn })
+  }, [restored, bpm, source, fills, countIn])
 
   /**
    * Told rather than passed, and told on its own: the transport holds one
@@ -249,6 +262,15 @@ export function Metronome({
   useEffect(() => {
     click.setFills?.(fills)
   }, [fills, click])
+
+  /**
+   * Told the same way, and for the opposite reason: the transport latches this
+   * one at Start, so telling it as the box changes is what makes the value
+   * ready for a press that has not happened yet.
+   */
+  useEffect(() => {
+    click.setCountIn?.(countIn)
+  }, [countIn, click])
 
   // The speaker's button is the Start/Stop control, pressed from across the
   // room. Armed by the first on-screen press, because a browser will not let a
@@ -265,6 +287,11 @@ export function Metronome({
   const changeFills = (next: boolean) => {
     arm()
     setFills(next)
+  }
+
+  const changeCountIn = (next: boolean) => {
+    arm()
+    setCountIn(next)
   }
 
   const changeTempo = (next: number) => {
@@ -290,7 +317,10 @@ export function Metronome({
           is an obligation rather than decoration, and stays last. */}
       <Stack gap={4}>
         {source !== 'click' && (
-          <FillsToggle checked={fills} onChange={changeFills} />
+          <>
+            <FillsToggle checked={fills} onChange={changeFills} />
+            <CountInToggle checked={countIn} onChange={changeCountIn} />
+          </>
         )}
         <FinePrint>{app.sampleCredit}</FinePrint>
       </Stack>
