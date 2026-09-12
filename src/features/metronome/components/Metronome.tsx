@@ -11,6 +11,7 @@ import { useRemoteControl } from '../hooks/useRemoteControl'
 import type { SourceId } from '../lib/transport/source'
 import {
   DEFAULT_BPM,
+  DEFAULT_FILLS,
   DEFAULT_SOURCE,
   readSetup,
   writeSetup,
@@ -24,6 +25,7 @@ import {
   type TapState,
 } from '../lib/tap/tapTempo'
 import { BeatRow } from './BeatRow'
+import { FillsToggle } from './FillsToggle'
 import { SourceSelect } from './SourceSelect'
 import { StartStopButton } from './StartStopButton'
 import { TapTempoButton } from './TapTempoButton'
@@ -52,6 +54,14 @@ export interface Transport {
   /** Reports whether the selected source's samples are still arriving, and
    *  reports the current answer on subscribing. */
   onLoadingChange?(listener: (loading: boolean) => void): () => void
+  /**
+   * Whether the groove plays its marked bars. The transport reads this per
+   * queued step, so it lands on the next unqueued one — nothing is rebuilt and
+   * a run in progress is not interrupted.
+   *
+   * Optional, like `select`, so a test can drive the click alone.
+   */
+  setFills?(on: boolean): void
 }
 
 /** Monotonic seconds, to match what `addTap` expects. */
@@ -77,6 +87,7 @@ export function Metronome({
   const [beat, setBeat] = useState<number | null>(null)
   const [armed, setArmed] = useState(false)
   const [source, setSource] = useState<SourceId>(DEFAULT_SOURCE)
+  const [fills, setFills] = useState(DEFAULT_FILLS)
   const [restored, setRestored] = useState(false)
   /** What the transport has been told, so it is not told the same thing twice. */
   const told = useRef<SourceId>(DEFAULT_SOURCE)
@@ -191,6 +202,7 @@ export function Metronome({
     const stored = readSetup()
     setBpm(stored.bpm)
     setSource(stored.source)
+    setFills(stored.fills)
     setRestored(true)
   }, [])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -226,8 +238,17 @@ export function Metronome({
    */
   useEffect(() => {
     if (!restored) return
-    writeSetup({ bpm, source })
-  }, [restored, bpm, source])
+    writeSetup({ bpm, source, fills })
+  }, [restored, bpm, source, fills])
+
+  /**
+   * Told rather than passed, and told on its own: the transport holds one
+   * field the groove reads as each step is queued, so a tick reaches the sound
+   * inside the lookahead without the device being built again.
+   */
+  useEffect(() => {
+    click.setFills?.(fills)
+  }, [fills, click])
 
   // The speaker's button is the Start/Stop control, pressed from across the
   // room. Armed by the first on-screen press, because a browser will not let a
@@ -239,6 +260,11 @@ export function Metronome({
   const changeSource = (next: SourceId) => {
     arm()
     setSource(next)
+  }
+
+  const changeFills = (next: boolean) => {
+    arm()
+    setFills(next)
   }
 
   const changeTempo = (next: number) => {
@@ -259,9 +285,15 @@ export function Metronome({
         <StartStopButton running={running} loading={running && loading} onToggle={toggle} />
         <TapTempoButton onTap={tap} />
       </Stack>
-      {/* CC-BY 4.0 on the kit: an obligation, not decoration. It is the last
-          thing in the page and has nothing above it to push down. */}
-      <FinePrint>{app.sampleCredit}</FinePrint>
+      {/* Both below Play, so the toggle appearing and going with the source
+          can never move the one control the page is for. CC-BY 4.0 on the kit
+          is an obligation rather than decoration, and stays last. */}
+      <Stack gap={4}>
+        {source !== 'click' && (
+          <FillsToggle checked={fills} onChange={changeFills} />
+        )}
+        <FinePrint>{app.sampleCredit}</FinePrint>
+      </Stack>
     </PageFrame>
   )
 }

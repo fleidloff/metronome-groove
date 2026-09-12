@@ -74,6 +74,19 @@ Plays Wordle every morning.
   condition, and the reason this is allowed at all: *"it's minimal and we can
   agree that the beat is not completely drifting apart but always coming back
   together."*
+- **A groove varies, and the player can stop it.** From V8 the funk groove runs
+  a four-bar cycle with a light variation in bar 2 and a fill in bar 4. Sam
+  asked for three things to survive every marked bar — the kick on 1, the snare
+  on 2 and 4, and the hat stating sixteenths — and was overruled on the last
+  two, deliberately:
+  [ADR 0010](adr/0010-a-marked-bar-modifies-the-figure.md) records the argument
+  and the mitigation. Sam's objection was never that a big fill sounds bad but
+  that it fails *silently* — *"I'd notice I kept stumbling every fifteen
+  seconds, decide the app was off, and go back to the click"* — so the "Fills"
+  checkbox exists to turn an invisible failure into a visible control. It is on
+  by default, because *"a ticked box is not setup"*, and it is absent while the
+  click is playing, because *"a checkbox that does nothing is a control I have
+  to read past on the way to play."*
 - **Thinning out is one row of toggles.** Beats mute for every voice at once,
   because what they are reducing is *reference*, not arranging a pattern. A grid
   of voices against beats is a drum machine and they did not ask for one.

@@ -12,5 +12,6 @@ export const metronome = {
   sound: 'Sound',
   click: 'Click',
   straightFunk: 'Straight funk',
+  fills: 'Fills',
   loading: 'Loading…',
 } satisfies MetronomeSnippets

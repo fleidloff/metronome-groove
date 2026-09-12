@@ -689,7 +689,10 @@ describe('the click scheduler', () => {
     const scheduler = createScheduler({
       clock: fake.clock,
       bpm,
-      source: createStraightFunkSource(),
+      // Variations off: this case guards the joint, and the four-bar cycle is
+      // groove/figure.test.ts's subject. With them on, the comparison below
+      // would be against a bar the source is no longer playing.
+      source: createStraightFunkSource({ variations: () => false }),
       // A full bar and a little, at whichever tempo. A fixed window in seconds
       // covers ten steps at 40 bpm and forty-eight at 180, so the open hat on
       // step 14 would simply not be reached at the bottom of the range.
@@ -716,7 +719,7 @@ describe('the click scheduler', () => {
         .map((entry) => ({ voice: entry.hit.voice, velocity: entry.hit.velocity }))
 
       expect(arrived).toEqual(
-        hitsAt(step).map((hit) => ({ voice: hit.voice, velocity: hit.velocity })),
+        hitsAt(step, false).map((hit) => ({ voice: hit.voice, velocity: hit.velocity })),
       )
     }
 

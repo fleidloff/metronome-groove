@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { MAX_BPM, MIN_BPM } from '../transport/tempo'
 import {
   DEFAULT_BPM,
+  DEFAULT_FILLS,
   DEFAULT_SETUP,
   DEFAULT_SOURCE,
   SETUP_KEY,
@@ -42,10 +43,19 @@ const stored = (value: unknown) => {
 }
 
 describe('a first visit', () => {
-  it('opens at 100 bpm on the click', () => {
-    expect(readSetup(fakeStorage())).toEqual({ bpm: 100, source: 'click' })
+  it('opens at 100 bpm on the click, with fills on', () => {
+    expect(readSetup(fakeStorage())).toEqual({
+      bpm: 100,
+      source: 'click',
+      fills: true,
+    })
     expect(DEFAULT_BPM).toBe(100)
-    expect(DEFAULT_SETUP).toEqual({ bpm: DEFAULT_BPM, source: DEFAULT_SOURCE })
+    expect(DEFAULT_FILLS).toBe(true)
+    expect(DEFAULT_SETUP).toEqual({
+      bpm: DEFAULT_BPM,
+      source: DEFAULT_SOURCE,
+      fills: DEFAULT_FILLS,
+    })
   })
 
   it('writes nothing by being read', () => {
@@ -59,26 +69,31 @@ describe('a first visit', () => {
 describe('a round trip', () => {
   it('gives back what went in', () => {
     const storage = fakeStorage()
-    writeSetup({ bpm: 137, source: 'straight-funk' }, storage)
+    writeSetup({ bpm: 137, source: 'straight-funk', fills: false }, storage)
 
-    expect(readSetup(storage)).toEqual({ bpm: 137, source: 'straight-funk' })
+    expect(readSetup(storage)).toEqual({
+      bpm: 137,
+      source: 'straight-funk',
+      fills: false,
+    })
   })
 
   it('stores the version alongside, so a later shape can tell itself apart', () => {
     const storage = fakeStorage()
-    writeSetup({ bpm: 120, source: 'click' }, storage)
+    writeSetup({ bpm: 120, source: 'click', fills: true }, storage)
 
     expect(JSON.parse(storage.raw() ?? '{}')).toEqual({
       version: SETUP_VERSION,
       bpm: 120,
       source: 'click',
+      fills: true,
     })
   })
 
   it('keeps both edges of the legal range', () => {
     for (const bpm of [MIN_BPM, MAX_BPM]) {
       const storage = fakeStorage()
-      writeSetup({ bpm, source: 'click' }, storage)
+      writeSetup({ bpm, source: 'click', fills: true }, storage)
 
       expect(readSetup(storage).bpm, `${bpm}`).toBe(bpm)
     }
@@ -91,7 +106,11 @@ describe('each value falls back on its own', () => {
       stored({ version: SETUP_VERSION, bpm: 9999, source: 'straight-funk' }),
     )
 
-    expect(setup).toEqual({ bpm: DEFAULT_BPM, source: 'straight-funk' })
+    expect(setup).toEqual({
+      bpm: DEFAULT_BPM,
+      source: 'straight-funk',
+      fills: DEFAULT_FILLS,
+    })
   })
 
   it('resets an unknown groove and keeps the tempo', () => {
@@ -101,7 +120,11 @@ describe('each value falls back on its own', () => {
       stored({ version: SETUP_VERSION, bpm: 140, source: 'a-groove-we-removed' }),
     )
 
-    expect(setup).toEqual({ bpm: 140, source: DEFAULT_SOURCE })
+    expect(setup).toEqual({
+      bpm: 140,
+      source: DEFAULT_SOURCE,
+      fills: DEFAULT_FILLS,
+    })
   })
 
   it('resets a tempo that is the wrong type entirely', () => {
@@ -115,6 +138,89 @@ describe('each value falls back on its own', () => {
     expect(
       readSetup(stored({ version: SETUP_VERSION, bpm: 1, source: 7 })),
     ).toEqual(DEFAULT_SETUP)
+  })
+})
+
+describe('the stored shape', () => {
+  it('stays at version 1, because V8 added a field instead of changing the shape', () => {
+    // Every other case here writes AND reads through SETUP_VERSION, so a bump
+    // would leave them all green while silently discarding every stored tempo
+    // in the wild. V8 added `fills` with a per-value default, which is exactly
+    // the case the per-value fallback exists for and exactly what a bump is
+    // not for. Pinning the literal is what makes a future bump fail here, with
+    // this reason attached, rather than in four component tests that do not
+    // say why.
+    expect(SETUP_VERSION).toBe(1)
+  })
+
+  it('reads a record at the pinned version, whatever the constant later becomes', () => {
+    const storage = stored({ version: 1, bpm: 137, source: 'straight-funk' })
+
+    expect(readSetup(storage)).toEqual({
+      bpm: 137,
+      source: 'straight-funk',
+      fills: true,
+    })
+  })
+})
+
+describe('the fills toggle', () => {
+  it('keeps a box that was unticked', () => {
+    const storage = fakeStorage()
+    writeSetup({ bpm: 120, source: 'straight-funk', fills: false }, storage)
+
+    expect(readSetup(storage).fills).toBe(false)
+  })
+
+  it('reads a record written before the field existed as fills on', () => {
+    // The version is deliberately not bumped: adding a field with a default is
+    // what the per-value fallback is for, and a bump would have discarded
+    // everyone's stored tempo to gain nothing.
+    const setup = readSetup(
+      stored({ version: SETUP_VERSION, bpm: 137, source: 'straight-funk' }),
+    )
+
+    expect(setup).toEqual({
+      bpm: 137,
+      source: 'straight-funk',
+      fills: DEFAULT_FILLS,
+    })
+  })
+
+  it('resets a fills that is the wrong type and keeps the tempo and the groove', () => {
+    for (const fills of ['true', 'false', 0, 1, null, {}, []]) {
+      const setup = readSetup(
+        stored({
+          version: SETUP_VERSION,
+          bpm: 137,
+          source: 'straight-funk',
+          fills,
+        }),
+      )
+
+      expect(setup, JSON.stringify(fills)).toEqual({
+        bpm: 137,
+        source: 'straight-funk',
+        fills: DEFAULT_FILLS,
+      })
+    }
+  })
+
+  it('survives a bad tempo beside it, each falling back on its own', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 9999,
+        source: 'straight-funk',
+        fills: false,
+      }),
+    )
+
+    expect(setup).toEqual({
+      bpm: DEFAULT_BPM,
+      source: 'straight-funk',
+      fills: false,
+    })
   })
 })
 
@@ -170,7 +276,9 @@ describe('storage that will not cooperate', () => {
       },
     })
 
-    expect(() => writeSetup({ bpm: 120, source: 'click' }, storage)).not.toThrow()
+    expect(() =>
+      writeSetup({ bpm: 120, source: 'click', fills: true }, storage),
+    ).not.toThrow()
   })
 
   it('survives a browser where reaching for storage throws', () => {
@@ -185,7 +293,9 @@ describe('storage that will not cooperate', () => {
 
     expect(() => readSetup()).not.toThrow()
     expect(readSetup()).toEqual(DEFAULT_SETUP)
-    expect(() => writeSetup({ bpm: 120, source: 'click' })).not.toThrow()
+    expect(() =>
+      writeSetup({ bpm: 120, source: 'click', fills: true }),
+    ).not.toThrow()
 
     vi.unstubAllGlobals()
   })

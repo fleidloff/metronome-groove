@@ -338,6 +338,70 @@ describe('the click transport suspended between taps', () => {
   })
 })
 
+describe('the transport carrying the fills setting', () => {
+  const GROOVE: SourceId = 'straight-funk'
+
+  /** Keeps whatever getter the hook hands the source, so a test can read it
+   *  the way the scheduler does — once per queued step. */
+  function watched(device: ReturnType<typeof fakeAudio>) {
+    const given: (() => boolean)[] = []
+    const factory: AudioFactory = (bpm, source, variations) => {
+      given.push(variations)
+      return device.factory(bpm, source, variations)
+    }
+    return { factory, given }
+  }
+
+  it('hands the source a getter rather than a captured boolean', async () => {
+    const device = fakeAudio()
+    const { factory, given } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+
+    // On unless someone says otherwise, and read afresh every call: this is
+    // what makes a toggle land on the next unqueued step.
+    expect(given[0]()).toBe(true)
+
+    act(() => transport().setFills?.(false))
+    expect(given[0]()).toBe(false)
+
+    act(() => transport().setFills?.(true))
+    expect(given[0]()).toBe(true)
+  })
+
+  it('builds no second device and stops no run to change it', async () => {
+    const device = fakeAudio()
+    const { factory } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await device.finishLoading()
+
+    act(() => transport().setFills?.(false))
+
+    expect(device.built.count).toBe(1)
+    expect(device.stop).not.toHaveBeenCalled()
+    expect(device.start).toHaveBeenCalledTimes(1)
+  })
+
+  it('carries the setting into a device built later', async () => {
+    const device = fakeAudio()
+    const { factory, given } = watched(device)
+    const { transport } = mount(factory)
+
+    // Set before anything is built, which is what a restored setup does.
+    act(() => transport().setFills?.(false))
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+
+    expect(given[0]()).toBe(false)
+  })
+})
+
 describe('the transport choosing what it plays', () => {
   const GROOVE: SourceId = 'straight-funk'
 

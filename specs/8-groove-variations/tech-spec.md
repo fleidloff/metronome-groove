@@ -90,6 +90,16 @@ The six from `spec.md` are assertions over all three bar shapes, not prose:
 Invariant 6 is the one **most likely to be broken by a later tweak**: nudging
 0.70 to 0.74 would quietly make the fill's rise unreliable rather than wrong.
 
+**Invariant 6 scopes to the contours V8 designs, and Track A was right to say
+so.** It covers the fill's non-ghost snare rise and the hat ladder in every bar.
+It does **not** cover V6's kick line, which runs 0.95 / 0.86 / 0.82 — and
+0.82 → 0.86 is 1.6 dB, half a ladder step. That pair is frozen twice over, by V6
+and by the toggle-off guarantee, so it cannot be moved; a blanket invariant
+would fail the ordinary bar. The exclusion is stated in the test rather than
+hidden, and the threshold is derived from
+`STRAIGHT_FUNK_HUMANIZE.velocityJitter` rather than written as `0.08`, so
+raising the jitter fails the test.
+
 ### What does not change
 
 `humanize.ts` (`STRAIGHT_FUNK_HUMANIZE` binds marked bars identically),

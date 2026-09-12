@@ -136,6 +136,18 @@ snare      4 12          ghosts 7 9 15
 kick       0 3 10
 ```
 
+**This is the *ordinary* bar, and V8 made it one of three.** The groove now runs
+a four-bar cycle — ordinary, light, ordinary, fill — derived from the absolute
+step so nothing becomes stateful, and shown on screen as one bar because the
+display is four beat dots.
+[ADR 0010](adr/0010-a-marked-bar-modifies-the-figure.md) governs how far a
+marked bar may depart: it **modifies** this figure and never replaces it, the
+gesture lives in steps 8–15, and six invariants hold in every bar. The sibling's
+`FILLS` phrases are written to replace a bar and cannot be ported directly.
+
+A player can switch the cycle off, and with it off the render is bit-identical
+to the single bar above.
+
 **The exception on step 14 is a correction, not a detail.** This figure
 originally put the closed hat on every step *and* the open hat on 14. One
 hi-hat cannot be open and closed at the same instant. The open hat also has to

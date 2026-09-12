@@ -13,12 +13,25 @@ import { STRAIGHT_FUNK_SWING, swingOffset } from './swing'
  */
 export const STRAIGHT_FUNK_SEED = 0x5f_75_6e_6b
 
-export function createStraightFunkSource(seed: number = STRAIGHT_FUNK_SEED): Source {
+export interface StraightFunkOptions {
+  readonly seed?: number
+  /**
+   * Read per step rather than captured once, which is what makes a toggle land
+   * on the next unqueued step: the scheduler queues about 100 ms ahead and
+   * calls `hitsAt` as each step is queued.
+   */
+  readonly variations?: () => boolean
+}
+
+export function createStraightFunkSource({
+  seed = STRAIGHT_FUNK_SEED,
+  variations = () => true,
+}: StraightFunkOptions = {}): Source {
   return {
     id: 'straight-funk',
     steps: STEPS_PER_BAR,
     humanize: STRAIGHT_FUNK_HUMANIZE,
-    hitsAt,
+    hitsAt: (step) => hitsAt(step, variations()),
     displace: (hit, step, stepSeconds) =>
       swingOffset(STRAIGHT_FUNK_SWING, step, stepSeconds) +
       timingOffset(STRAIGHT_FUNK_HUMANIZE, seed, hit.voice, step, stepSeconds),

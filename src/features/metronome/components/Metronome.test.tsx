@@ -33,6 +33,7 @@ function fakeTransport() {
   const suspend = vi.fn()
   const resume = vi.fn()
   const select = vi.fn()
+  const setFills = vi.fn()
   const unsubscribe = vi.fn()
   const loadingListeners = new Set<(loading: boolean) => void>()
 
@@ -43,6 +44,7 @@ function fakeTransport() {
     suspend,
     resume,
     select,
+    setFills,
     onBeat(listener) {
       listeners.add(listener)
       return () => {
@@ -77,6 +79,7 @@ function fakeTransport() {
     suspend,
     resume,
     select,
+    setFills,
     unsubscribe,
     beat,
     loading,
@@ -912,6 +915,168 @@ describe(app.name, () => {
       expect(screen.getByRole('status')).toHaveTextContent(
         `${SETUP_DEFAULT_BPM} ${metronome.tempoUnit}`,
       )
+    })
+  })
+
+  describe('the fills toggle', () => {
+    const GROOVE = 'straight-funk'
+
+    const picker = () => screen.getByRole('combobox', { name: metronome.sound })
+    const box = () => screen.queryByRole('checkbox', { name: metronome.fills })
+    const pick = (value: string) =>
+      fireEvent.change(picker(), { target: { value } })
+
+    it('is absent from the page while the click is selected', () => {
+      render(<Metronome />)
+
+      // Absent, not disabled: a control that does nothing is one more thing to
+      // read past on the way to Play.
+      expect(box()).toBeNull()
+    })
+
+    it('arrives ticked with the groove, so the best sound is not shipped off', () => {
+      render(<Metronome />)
+
+      pick(GROOVE)
+
+      expect(box()).toBeChecked()
+    })
+
+    it('goes again when the click comes back', () => {
+      render(<Metronome />)
+
+      pick(GROOVE)
+      pick('click')
+
+      expect(box()).toBeNull()
+    })
+
+    it('sits below Play and holds nothing, with the credit still last', () => {
+      render(<Metronome />)
+      pick(GROOVE)
+
+      const play = screen.getByRole('button', { name: metronome.start })
+      const toggle = box()
+      const credit = screen.getByText(app.sampleCredit)
+
+      // After Play in the page and not wrapping it, so appearing and going with
+      // the source can never move the one control the page is for.
+      expect(
+        play.compareDocumentPosition(toggle!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(toggle!.contains(play)).toBe(false)
+
+      // With the credit rather than in the groove select, which is the one place
+      // on the page someone is actually reading.
+      expect(
+        picker().compareDocumentPosition(toggle!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        toggle!.compareDocumentPosition(credit) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(credit.nextElementSibling).toBeNull()
+    })
+
+    it('tells the transport without stopping the run it is in', () => {
+      const { transport, setFills, start, stop, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(screen.getByRole('button', { name: metronome.start }))
+      fireEvent.click(box()!)
+
+      expect(setFills).toHaveBeenLastCalledWith(false)
+      expect(box()).not.toBeChecked()
+      // Nothing is rebuilt and nothing is restarted: the transport reads the
+      // flag as each step is queued, so the change lands inside the lookahead.
+      expect(stop).not.toHaveBeenCalled()
+      expect(start).toHaveBeenCalledTimes(1)
+      expect(select).toHaveBeenCalledTimes(1)
+      expect(screen.getAllByRole('listitem')).toHaveLength(4)
+    })
+
+    it('tells it again when the box goes back on', () => {
+      const { transport, setFills } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+      fireEvent.click(box()!)
+
+      expect(setFills).toHaveBeenLastCalledWith(true)
+      expect(box()).toBeChecked()
+    })
+
+    it('is a gesture like any other, so it arms the speaker button', () => {
+      const { transport } = fakeTransport()
+      const handlers = new Map<string, () => void>()
+      vi.stubGlobal('navigator', {
+        ...globalThis.navigator,
+        mediaSession: {
+          setActionHandler: (action: string, handler: (() => void) | null) => {
+            if (handler === null) handlers.delete(action)
+            else handlers.set(action, handler)
+          },
+          metadata: null,
+          playbackState: 'none',
+        },
+      })
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+
+      expect(handlers.size).toBe(1)
+      vi.unstubAllGlobals()
+    })
+
+    it('is remembered in the one setup record, beside the tempo and the groove', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+
+      expect(JSON.parse(window.localStorage.getItem(SETUP_KEY) ?? '{}')).toMatchObject(
+        { source: GROOVE, fills: false },
+      )
+      expect(window.localStorage.length).toBe(1)
+    })
+
+    it('opens unticked when that is what was stored', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: GROOVE, fills: false }),
+      )
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(box()).not.toBeChecked()
+    })
+
+    it('opens ticked from a record written before the field existed', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: GROOVE }),
+      )
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(box()).toBeChecked()
+    })
+
+    it('keeps the setting across a trip to the click and back', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box()!)
+      pick('click')
+      pick(GROOVE)
+
+      expect(box()).not.toBeChecked()
     })
   })
 

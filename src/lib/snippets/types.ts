@@ -28,6 +28,12 @@ export type MetronomeSnippets = {
   sound: string
   click: string
   straightFunk: string
+  /**
+   * The groove's variations toggle. Named for the thing a non-drummer would
+   * notice in a song rather than for what the code does — it covers a light
+   * variation as well, and the persona judged that irrelevant.
+   */
+  fills: string
   /** Shown on the start control while the samples it needs are still arriving,
    *  so a press during the load reads as waiting rather than as nothing. */
   loading: string

@@ -40,7 +40,13 @@ export type Audio = {
  * device — which is the only way the start/stop/unmount races below can be
  * asserted at all.
  */
-export type AudioFactory = (bpm: number, source: SourceId) => Promise<Audio>
+export type AudioFactory = (
+  bpm: number,
+  source: SourceId,
+  /** Read per step by the groove, so unticking the box lands on the next
+   *  unqueued step rather than needing a device to be built again. */
+  variations: () => boolean,
+) => Promise<Audio>
 
 /**
  * One hi-hat has one state. A closed hat that sounds while the open one is
@@ -102,15 +108,19 @@ const buildKitBank = async (context: AudioContext): Promise<VoiceBank> => {
   return bank
 }
 
-const sourceFor = (id: SourceId): Source =>
-  id === 'click' ? CLICK_SOURCE : createStraightFunkSource()
+/**
+ * The click declines variations the same way it declines humanize: it is not
+ * given them at all, so `CLICK_SOURCE` never learns what a bar is.
+ */
+const sourceFor = (id: SourceId, variations: () => boolean): Source =>
+  id === 'click' ? CLICK_SOURCE : createStraightFunkSource({ variations })
 
 /**
  * The transport plus its third state. `suspend` puts the click between running
  * and stopped — silent, but remembered — so a tapped tempo can bring it back
  * on its own rather than asking the player to press start a second time.
  */
-const buildRealAudio: AudioFactory = async (bpm, id) => {
+const buildRealAudio: AudioFactory = async (bpm, id, variations) => {
   const context = new AudioContext()
 
   try {
@@ -120,7 +130,7 @@ const buildRealAudio: AudioFactory = async (bpm, id) => {
     return {
       context,
       clock,
-      scheduler: createScheduler({ clock, bpm, source: sourceFor(id) }),
+      scheduler: createScheduler({ clock, bpm, source: sourceFor(id, variations) }),
     }
   } catch (reason) {
     await context.close()
@@ -161,6 +171,13 @@ export function useClickTransport(
     /** Which source the device is built for. The click, until someone asks for
      *  something else — so a player who only ever uses it downloads one file. */
     sourceId: 'click' as SourceId,
+    /**
+     * Whether the groove plays its marked bars. Held here rather than closed
+     * over at build time: the getter handed to the source reads this field, so
+     * a change reaches the next step the scheduler queues with no rebuild and
+     * no restart.
+     */
+    fills: true,
     /** Whether a device is being built right now. The start control reads it,
      *  so a press during the load says it is waiting instead of sounding a
      *  silent bar. */
@@ -271,7 +288,7 @@ export function useClickTransport(
 
       announceLoading(true)
 
-      const attempt = buildAudio(live.bpm, live.sourceId).then(
+      const attempt = buildAudio(live.bpm, live.sourceId, () => live.fills).then(
         (built) => {
           settle()
           return receive(mine)(built)
@@ -401,6 +418,15 @@ export function useClickTransport(
       setTempo(next: number) {
         live.bpm = clampTempo(next)
         live.audio?.scheduler.setTempo(live.bpm)
+      },
+
+      /**
+       * One field, and nothing else. Rebuilding the source here would cost a
+       * teardown per click and lose the absolute step that take selection and
+       * humanize both read.
+       */
+      setFills(on: boolean) {
+        live.fills = on
       },
 
       onBeat(listener: (beat: number) => void) {

@@ -1,7 +1,7 @@
 # V8. Groove variations
 
 Started 2026-09-12 · `/vibe-with-docs`
-**Phase:** ready to build — `/implement-vibe-with-docs 8` (after 7)
+**Phase:** shipped 2026-09-12
 
 ## What
 
@@ -106,6 +106,11 @@ steps with no kick is the accent.
 Question 2 fails on `lib/groove/`, `lib/setup/`, the feature's `components/` and
 `src/components/` for the checkbox primitive. It is the same failure V6 took and
 a smaller one — no new samples, no new licence, three files of real logic.
+
+**Measured after the build it was five, not four.** The verifier counted the
+feature's `hooks/` and `src/lib/snippets/` as well. The waiver still covers it —
+question 2 was already failed and waived in writing — but the count grew past
+what the waiver described, and that is recorded rather than rounded down.
 
 ## Decided
 

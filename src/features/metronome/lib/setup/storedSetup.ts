@@ -15,14 +15,23 @@ export const DEFAULT_BPM = 100
 /** The click, because it is what a first-time visitor gets for one small file. */
 export const DEFAULT_SOURCE: SourceId = 'click'
 
+/**
+ * On, including for a first-time visitor. A ticked box is not setup — what the
+ * persona rules out is something you must *do* before you hear anything, and
+ * off by default would ship the groove's best sound switched off.
+ */
+export const DEFAULT_FILLS = true
+
 export interface Setup {
   readonly bpm: number
   readonly source: SourceId
+  readonly fills: boolean
 }
 
 export const DEFAULT_SETUP: Setup = {
   bpm: DEFAULT_BPM,
   source: DEFAULT_SOURCE,
+  fills: DEFAULT_FILLS,
 }
 
 const storageOf = (given?: Storage) => {
@@ -82,6 +91,10 @@ export function readSetup(storage?: Storage): Setup {
   return {
     bpm: isStoredTempo(stored.bpm) ? stored.bpm : DEFAULT_BPM,
     source: isSourceId(stored.source) ? stored.source : DEFAULT_SOURCE,
+    // A record written before this field existed has no `fills` key, and the
+    // per-value fallback is what lets it read back complete rather than
+    // costing everyone the tempo a version bump would have discarded.
+    fills: typeof stored.fills === 'boolean' ? stored.fills : DEFAULT_FILLS,
   }
 }
 
