@@ -2,10 +2,15 @@ import { Select, type SelectOption } from '@/components/controls/Select'
 import { metronome } from '@/lib/snippets'
 import type { SourceId } from '../lib/transport/source'
 
-/** The click first, because it is the default and what the app is without a
- *  groove: a first visit downloads one file and sounds on the first tap. */
+/**
+ * The click first, because it is the default and what the app is without a
+ * groove: a first visit downloads one file and sounds on the first tap. Rock
+ * next, because `docs/music.md` calls it the baseline and a list is read
+ * top-down by someone choosing.
+ */
 const OPTIONS: readonly SelectOption<SourceId>[] = [
   { value: 'click', label: metronome.click },
+  { value: 'rock', label: metronome.rock },
   { value: 'straight-funk', label: metronome.straightFunk },
 ]
 

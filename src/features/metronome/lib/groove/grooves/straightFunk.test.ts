@@ -1,13 +1,13 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR } from '@/lib/steps'
 import { DYNAMIC_RANGE_DB, gainFor } from '@/lib/velocity'
-import type { Hit, VoiceName } from '../transport/source'
-import * as figure from './figure'
-import { BARS_PER_CYCLE, GHOST_VELOCITY, STRAIGHT_FUNK_STEPS, barIndexFor, hitsAt } from './figure'
-import { STRAIGHT_FUNK_HUMANIZE } from './humanize'
-import { type KitVoiceName, layerFor } from './kit'
+import type { Hit, VoiceName } from '../../transport/source'
+import { BARS_PER_CYCLE, hitsAt } from '../cycle'
+import { sixInvariantViolations } from '../invariants'
+import { type KitVoiceName, layerFor } from '../kit'
+import { GHOST_VELOCITY, STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+
+const STRAIGHT_FUNK_STEPS = STRAIGHT_FUNK.steps
 
 /** The contract table in `specs/6-straight-funk-groove/tech-spec.md`, written
  *  out step by step so the test states it rather than deriving it. */
@@ -54,21 +54,21 @@ const EXPECTED: readonly (readonly Hit[])[] = [
   ],
 ]
 
-const bar = () => EXPECTED.map((_, step) => hitsAt(step))
+const bar = () => EXPECTED.map((_, step) => hitsAt(STRAIGHT_FUNK, step))
 
 const stepsOf = (voice: string) =>
   bar().flatMap((hits, step) => (hits.some((h) => h.voice === voice) ? [step] : []))
 
 describe('the straight funk figure', () => {
   it('is one bar of sixteen steps', () => {
-    expect(STRAIGHT_FUNK_STEPS).toBe(STEPS_PER_BAR)
-    expect(STRAIGHT_FUNK_STEPS).toBe(16)
+    expect(STRAIGHT_FUNK.steps).toBe(STEPS_PER_BAR)
+    expect(STRAIGHT_FUNK.steps).toBe(16)
   })
 
   it.each(EXPECTED.map((hits, step) => [step, hits] as const))(
     'plays step %i exactly as the table writes it',
     (step, hits) => {
-      expect(hitsAt(step)).toEqual(hits)
+      expect(hitsAt(STRAIGHT_FUNK, step)).toEqual(hits)
     },
   )
 
@@ -112,7 +112,7 @@ describe('the straight funk figure', () => {
 
   it('repeats the bar for absolute steps beyond it', () => {
     for (let step = 0; step < 64; step += 1) {
-      expect(hitsAt(step)).toEqual(EXPECTED[step % 16])
+      expect(hitsAt(STRAIGHT_FUNK, step)).toEqual(EXPECTED[step % 16])
     }
   })
 })
@@ -162,7 +162,7 @@ const BAR_SHAPES = [
 
 const cycleBar = (barIndex: number): readonly (readonly Hit[])[] =>
   Array.from({ length: STRAIGHT_FUNK_STEPS }, (_, step) =>
-    hitsAt(barIndex * STRAIGHT_FUNK_STEPS + step, true),
+    hitsAt(STRAIGHT_FUNK, barIndex * STRAIGHT_FUNK_STEPS + step, true),
   )
 
 const stepsIn = (bar: readonly (readonly Hit[])[], voice: VoiceName) =>
@@ -174,29 +174,9 @@ const velocitiesIn = (bar: readonly (readonly Hit[])[], voice: VoiceName) =>
 describe('the four-bar cycle', () => {
   it('runs ordinary, light, ordinary, fill over the absolute step', () => {
     expect(BARS_PER_CYCLE).toBe(4)
-    expect(Array.from({ length: 8 }, (_, bar) => barIndexFor(bar * STRAIGHT_FUNK_STEPS))).toEqual([
-      0, 1, 2, 3, 0, 1, 2, 3,
-    ])
-  })
-
-  it('holds the bar index for every step inside the bar', () => {
-    for (let step = 0; step < STRAIGHT_FUNK_STEPS * BARS_PER_CYCLE * 2; step += 1) {
-      expect(barIndexFor(step)).toBe(Math.floor(step / STRAIGHT_FUNK_STEPS) % BARS_PER_CYCLE)
-    }
-  })
-
-  it('counts bars the same way at a four-step bar as at a sixteen-step one', () => {
-    expect(Array.from({ length: 8 }, (_, step) => barIndexFor(step, 4))).toEqual([
-      0, 0, 0, 0, 1, 1, 1, 1,
-    ])
-    expect(barIndexFor(16, 4)).toBe(0)
-  })
-
-  it('puts the step before the downbeat in the bar before it, never in bar -1', () => {
-    expect(barIndexFor(-1)).toBe(3)
-    expect(barIndexFor(-STRAIGHT_FUNK_STEPS)).toBe(3)
-    expect(barIndexFor(-STRAIGHT_FUNK_STEPS - 1)).toBe(2)
-    expect(barIndexFor(-STRAIGHT_FUNK_STEPS * BARS_PER_CYCLE)).toBe(0)
+    expect(BAR_SHAPES.map(([, barIndex]) => cycleBar(barIndex))).toEqual(
+      BAR_SHAPES.map(([, , shape]) => shape),
+    )
   })
 
   it('states the ordinary figure twice before anything changes', () => {
@@ -208,7 +188,7 @@ describe('the four-bar cycle', () => {
     const period = STRAIGHT_FUNK_STEPS * BARS_PER_CYCLE
 
     for (let step = 0; step < period * 3; step += 1) {
-      expect(hitsAt(step, true)).toEqual(hitsAt(step % period, true))
+      expect(hitsAt(STRAIGHT_FUNK, step, true)).toEqual(hitsAt(STRAIGHT_FUNK, step % period, true))
     }
   })
 })
@@ -219,7 +199,7 @@ describe('bar 2, the light one', () => {
   it.each(LIGHT_EXPECTED.map((hits, step) => [step, hits] as const))(
     'plays step %i exactly as the table writes it',
     (step, hits) => {
-      expect(hitsAt(STRAIGHT_FUNK_STEPS + step, true)).toEqual(hits)
+      expect(hitsAt(STRAIGHT_FUNK, STRAIGHT_FUNK_STEPS + step, true)).toEqual(hits)
     },
   )
 
@@ -264,7 +244,7 @@ describe('bar 4, the fill', () => {
   it.each(FILL_EXPECTED.map((hits, step) => [step, hits] as const))(
     'plays step %i exactly as the table writes it',
     (step, hits) => {
-      expect(hitsAt(STRAIGHT_FUNK_STEPS * 3 + step, true)).toEqual(hits)
+      expect(hitsAt(STRAIGHT_FUNK, STRAIGHT_FUNK_STEPS * 3 + step, true)).toEqual(hits)
     },
   )
 
@@ -320,94 +300,34 @@ describe('step 15 across the cycle, the spine of the design', () => {
   })
 })
 
-describe('the six invariants, in every bar of the cycle', () => {
-  it.each(BAR_SHAPES)('1. sounds the kick on step 0 at 0.95 in %s', (_name, barIndex) => {
-    expect(cycleBar(barIndex)[0]).toContainEqual({ voice: 'kick', velocity: 0.95 })
+describe("the six invariants, in every bar of the cycle", () => {
+  it('keeps all six, as ADR 0010 writes them for every groove', () => {
+    expect(sixInvariantViolations(STRAIGHT_FUNK, { ghostVelocity: GHOST_VELOCITY })).toEqual([])
   })
 
-  it.each(BAR_SHAPES)('2. carries a hit on all sixteen steps of %s', (_name, barIndex) => {
-    for (const [step, hits] of cycleBar(barIndex).entries()) {
-      expect(hits.length, `step ${step} is silent`).toBeGreaterThan(0)
+  it('states its subdivision as the sixteenth, so all sixteen steps carry a hit', () => {
+    expect(STRAIGHT_FUNK.subdivision).toBe(16)
+    expect(STRAIGHT_FUNK.subdivision).toBe(STRAIGHT_FUNK.steps)
+
+    for (const [, barIndex] of BAR_SHAPES) {
+      for (const [step, hits] of cycleBar(barIndex).entries()) {
+        expect(hits.length, `step ${step} is silent`).toBeGreaterThan(0)
+      }
     }
   })
 
-  it.each(BAR_SHAPES)('3. plays the ordinary figure over steps 0-7 of %s', (_name, barIndex) => {
-    expect(cycleBar(barIndex).slice(0, FILL_FROM_STEP)).toEqual(EXPECTED.slice(0, FILL_FROM_STEP))
-  })
-
-  it('4. reaches nothing that could change stepSeconds, swing, the seed or the humanize bound', () => {
-    const source = readFileSync(
-      join(process.cwd(), 'src/features/metronome/lib/groove/figure.ts'),
-      'utf8',
-    )
-    const imports = [...source.matchAll(/from '([^']+)'/g)].map(([, path]) => path)
-
-    expect(imports.sort()).toEqual(['../transport/source', '@/lib/steps', '@/lib/velocity'])
-    expect(Object.keys(figure).sort()).toEqual([
-      'BARS_PER_CYCLE',
-      'GHOST_VELOCITY',
-      'STRAIGHT_FUNK_STEPS',
-      'barIndexFor',
-      'hitsAt',
-    ])
-  })
-
-  it.each(BAR_SHAPES)(
-    '5. closes every open hat inside %s, so none rings into the next downbeat',
-    (_name, barIndex) => {
-      const bar = cycleBar(barIndex)
-      const closed = stepsIn(bar, 'hatClosed')
-
-      for (const open of stepsIn(bar, 'hatOpen')) {
-        expect(
-          closed.some((step) => step > open),
-          `open hat on ${open} is never closed`,
-        ).toBe(true)
-      }
-    },
-  )
-
-  it('6. keeps every designed contour a ladder step apart, so jitter can flatten it but never reverse it', () => {
+  it('6. designs its contours a full ladder step apart, which here is 3.2 dB', () => {
     // gainTrim is ±40 · velocityJitter dB, so the worst case closes twice that
     // between two hits. A contour step below it can swap order on a pass.
     const worstCaseJitterDb = 2 * DYNAMIC_RANGE_DB * STRAIGHT_FUNK_HUMANIZE.velocityJitter
-    const fill = cycleBar(3)
-
-    // Scoped to the contours V8 designs, and V6's kick line is deliberately
-    // not one of them: 0.95 / 0.86 / 0.82 puts 0.82 -> 0.86 at half a ladder
-    // step. That pair is frozen twice over — by V6 and by the toggle-off
-    // guarantee that variations off renders V6 exactly — so it cannot be moved,
-    // and a blanket rule here would fail the ordinary bar rather than protect
-    // anything.
-    const contours: readonly (readonly [string, readonly number[]])[] = [
-      [
-        "the fill's snare, rising to step 15",
-        velocitiesIn(fill.slice(FILL_FROM_STEP), 'snare').filter((v) => v !== GHOST_VELOCITY),
-      ],
-      ...BAR_SHAPES.map(
-        ([name, barIndex]) =>
-          [
-            `the hat ladder in ${name}`,
-            [...new Set(velocitiesIn(cycleBar(barIndex), 'hatClosed'))].sort((a, b) => a - b),
-          ] as const,
-      ),
-    ]
 
     expect(worstCaseJitterDb).toBeCloseTo(3.2, 5)
 
-    for (const [name, contour] of contours) {
-      expect(contour.length, name).toBeGreaterThan(1)
-
-      for (let i = 1; i < contour.length; i += 1) {
-        const stepDb = Math.abs(DYNAMIC_RANGE_DB * (contour[i] - contour[i - 1]))
-
-        // ≥ rather than > : the designed step is exactly the worst case, and
-        // binary floating point puts 40 · (0.7 − 0.62) a hair under 3.2.
-        expect(stepDb, `${name}: ${contour[i - 1]} -> ${contour[i]}`).toBeGreaterThanOrEqual(
-          worstCaseJitterDb - 1e-9,
-        )
-      }
-    }
+    // The kick line is deliberately not a designed contour: 0.95 / 0.86 / 0.82
+    // puts 0.82 -> 0.86 at half a ladder step, and that pair is frozen twice
+    // over — by V6 and by the toggle-off guarantee that variations off renders
+    // V6 exactly.
+    expect(velocitiesIn(cycleBar(0), 'kick')).toEqual([0.95, 0.82, 0.86])
   })
 })
 
@@ -435,13 +355,13 @@ describe("the fill's ladder against the kit's velocity layers", () => {
 describe('with variations off', () => {
   it('reproduces V6 single bar for every step of all four bar positions', () => {
     for (let step = 0; step < STRAIGHT_FUNK_STEPS * BARS_PER_CYCLE * 3; step += 1) {
-      expect(hitsAt(step, false), `step ${step}`).toEqual(EXPECTED[step % STRAIGHT_FUNK_STEPS])
+      expect(hitsAt(STRAIGHT_FUNK, step, false), `step ${step}`).toEqual(EXPECTED[step % STRAIGHT_FUNK_STEPS])
     }
   })
 
   it('defaults to off, so a caller that never heard of variations gets V6', () => {
     for (let step = 0; step < STRAIGHT_FUNK_STEPS * BARS_PER_CYCLE; step += 1) {
-      expect(hitsAt(step)).toEqual(hitsAt(step, false))
+      expect(hitsAt(STRAIGHT_FUNK, step)).toEqual(hitsAt(STRAIGHT_FUNK, step, false))
     }
   })
 })

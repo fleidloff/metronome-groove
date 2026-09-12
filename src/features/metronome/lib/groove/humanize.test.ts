@@ -2,13 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
 import { DYNAMIC_RANGE_DB } from '@/lib/velocity'
 import type { VoiceName } from '../transport/source'
-import {
-  STRAIGHT_FUNK_HUMANIZE,
-  gainTrim,
-  roundRobinIndex,
-  timingBound,
-  timingOffset,
-} from './humanize'
+import { STRAIGHT_FUNK_HUMANIZE } from './grooves/straightFunk'
+import { gainTrim, roundRobinIndex, timingBound, timingOffset } from './humanize'
 
 const VOICES: readonly VoiceName[] = ['kick', 'snare', 'hatClosed', 'hatOpen']
 

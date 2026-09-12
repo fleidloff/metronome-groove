@@ -13,12 +13,6 @@
 import { DYNAMIC_RANGE_DB } from '@/lib/velocity'
 import type { Humanize, VoiceName } from '../transport/source'
 
-export const STRAIGHT_FUNK_HUMANIZE: Humanize = {
-  timingFractionOfStep: 0.03,
-  timingCeilingMs: 4,
-  velocityJitter: 0.04,
-}
-
 /** Seconds. A fraction of the step, capped: 3% is 11 ms at 40 bpm and 2.5 ms
  *  at 180, so the fraction alone would be loose where a step is long. */
 export function timingBound(humanize: Humanize, stepSeconds: number): number {

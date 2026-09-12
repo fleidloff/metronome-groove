@@ -1,19 +1,11 @@
-import { STEPS_PER_BAR } from '@/lib/steps'
 import type { Source } from '../transport/source'
-import { hitsAt } from './figure'
-import { STRAIGHT_FUNK_HUMANIZE, gainTrim, timingOffset } from './humanize'
-import { STRAIGHT_FUNK_SWING, swingOffset } from './swing'
+import { hitsAt } from './cycle'
+import type { GrooveDefinition } from './grooves/definition'
+import { gainTrim, timingOffset } from './humanize'
+import { swingOffset } from './swing'
 
-/**
- * Fixed rather than drawn at start-up. The displacement of every hit is a pure
- * function of `(seed, voice, step)`, so a constant seed is what makes the
- * groove sound the same on Tuesday as it did on Monday — which is what a
- * listening pass needs in order to be worth anything. A caller may pass its
- * own to hear a different set of imperfections from the same figure.
- */
-export const STRAIGHT_FUNK_SEED = 0x5f_75_6e_6b
-
-export interface StraightFunkOptions {
+export interface GrooveSourceOptions {
+  /** Defaults to the groove's own, which is what makes a run repeatable. */
   readonly seed?: number
   /**
    * Read per step rather than captured once, which is what makes a toggle land
@@ -23,18 +15,29 @@ export interface StraightFunkOptions {
   readonly variations?: () => boolean
 }
 
-export function createStraightFunkSource({
-  seed = STRAIGHT_FUNK_SEED,
-  variations = () => true,
-}: StraightFunkOptions = {}): Source {
+/**
+ * One factory over any groove's data. Every groove displaces, trims and indexes
+ * takes the same way; what differs is the lines, the swing, the seed and the
+ * humanize record, and all four arrive in the definition.
+ */
+export function createGrooveSource(
+  groove: GrooveDefinition,
+  { seed = groove.seed, variations = () => true }: GrooveSourceOptions = {},
+): Source {
+  const { humanize, swing } = groove
+
   return {
-    id: 'straight-funk',
-    steps: STEPS_PER_BAR,
-    humanize: STRAIGHT_FUNK_HUMANIZE,
-    hitsAt: (step) => hitsAt(step, variations()),
+    id: groove.id,
+    steps: groove.steps,
+    humanize,
+    hitsAt: (step) => hitsAt(groove, step, variations()),
     displace: (hit, step, stepSeconds) =>
-      swingOffset(STRAIGHT_FUNK_SWING, step, stepSeconds) +
-      timingOffset(STRAIGHT_FUNK_HUMANIZE, seed, hit.voice, step, stepSeconds),
-    trim: (hit, step) => gainTrim(STRAIGHT_FUNK_HUMANIZE, seed, hit.voice, step),
+      swingOffset(swing, step, stepSeconds) +
+      timingOffset(humanize, seed, hit.voice, step, stepSeconds),
+    trim: (hit, step) => gainTrim(humanize, seed, hit.voice, step),
+    /** A groove does not shift its own timeline against the scheduler's, so the
+     *  take step is the grid step. A count-in is what moves it, and it wraps
+     *  this rather than being known to it. */
+    takeStep: (step) => step,
   }
 }

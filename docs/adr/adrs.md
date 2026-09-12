@@ -22,3 +22,5 @@ record is edited to ⛔ **Superseded by**. Nothing here is deleted.
 | [0009](0009-the-setup-lives-in-the-browser.md) | The setup lives in the browser, one versioned object, validated per value | ✅ Accepted | 2026-09-12 |
 | [0010](0010-a-marked-bar-modifies-the-figure.md) | A marked bar modifies the figure and never replaces it | ✅ Accepted | 2026-09-12 |
 | [0011](0011-a-pre-roll-is-a-source-that-wraps-a-source.md) | A pre-roll is a source that wraps a source, and `Source` gains `takeStep` | ✅ Accepted | 2026-09-12 |
+| [0012](0012-a-groove-is-data.md) | A groove is data, and `lib/groove/` is machinery over it | ✅ Accepted | 2026-09-12 |
+| [0013](0013-a-device-is-keyed-by-its-bank.md) | A device is keyed by its sample bank, not by its source | ✅ Accepted | 2026-09-12 |

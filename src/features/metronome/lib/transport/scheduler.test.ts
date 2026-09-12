@@ -5,9 +5,9 @@ import type { Clock, Hit, Humanize, Placement, Source, VoiceName } from './sourc
 import type { Beat, Scheduler } from './scheduler'
 import { createScheduler } from './scheduler'
 import { MIN_BPM } from './tempo'
-import { createStraightFunkSource } from '../groove/source'
-import { hitsAt } from '../groove/figure'
-import { STRAIGHT_FUNK_HUMANIZE } from '../groove/humanize'
+import { createGrooveSource } from '../groove/source'
+import { hitsAt } from '../groove/cycle'
+import { STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from '../groove/grooves/straightFunk'
 
 /**
  * Fixtures, not the app's numbers. The transport knows a `Source` and a
@@ -723,9 +723,9 @@ describe('the click scheduler', () => {
       clock: fake.clock,
       bpm,
       // Variations off: this case guards the joint, and the four-bar cycle is
-      // groove/figure.test.ts's subject. With them on, the comparison below
+      // groove/cycle.test.ts's subject. With them on, the comparison below
       // would be against a bar the source is no longer playing.
-      source: createStraightFunkSource({ variations: () => false }),
+      source: createGrooveSource(STRAIGHT_FUNK, { variations: () => false }),
       // A full bar and a little, at whichever tempo. A fixed window in seconds
       // covers ten steps at 40 bpm and forty-eight at 180, so the open hat on
       // step 14 would simply not be reached at the bottom of the range.
@@ -741,9 +741,9 @@ describe('the click scheduler', () => {
 
     // What this case guards is the JOINT, not the figure. Every hit the source
     // declared arrives at the clock unaltered, on the step it was written for.
-    // What the figure *should* contain is asserted in figure.test.ts against a
-    // hand-written table — checking it here against hitsAt() would be the same
-    // function on both sides of the equals sign, and would stay green if the
+    // What the figure *should* contain is asserted in grooves/straightFunk.test.ts
+    // against a hand-written table — checking it here against `hitsAt` would be
+    // the same function on both sides of the equals sign, and would stay green if the
     // figure lost a voice.
     const queued = Math.max(...fake.steps()) + 1
     for (let step = 0; step < queued; step += 1) {
@@ -752,7 +752,7 @@ describe('the click scheduler', () => {
         .map((entry) => ({ voice: entry.hit.voice, velocity: entry.hit.velocity }))
 
       expect(arrived).toEqual(
-        hitsAt(step, false).map((hit) => ({ voice: hit.voice, velocity: hit.velocity })),
+        hitsAt(STRAIGHT_FUNK, step, false).map((hit) => ({ voice: hit.voice, velocity: hit.velocity })),
       )
     }
 

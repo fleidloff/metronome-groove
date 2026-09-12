@@ -34,6 +34,8 @@ function fakeAudio() {
   const setTempo = vi.fn()
   const tick = vi.fn()
 
+  const retargeted: SourceId[] = []
+
   const audio: Audio = {
     context: { state: 'running', resume, close },
     clock: { currentTime: 0, stopSounding },
@@ -46,6 +48,10 @@ function fakeAudio() {
       setTempo,
       tick,
       onBeat: vi.fn(() => () => {}),
+    },
+    retarget: (id) => {
+      retargeted.push(id)
+      return audio.scheduler
     },
   }
 
@@ -63,6 +69,7 @@ function fakeAudio() {
     factory,
     built,
     asked,
+    retargeted,
     close,
     stopSounding,
     stop,
@@ -410,6 +417,7 @@ describe('the transport carrying the fills setting', () => {
 
 describe('the transport choosing what it plays', () => {
   const GROOVE: SourceId = 'straight-funk'
+  const ROCK_ID: SourceId = 'rock'
 
   it('builds the click when start is the first thing that happens', async () => {
     const device = fakeAudio()
@@ -556,6 +564,64 @@ describe('the transport choosing what it plays', () => {
     expect(device.start).not.toHaveBeenCalled()
     expect(vi.mocked(globalThis.requestAnimationFrame)).not.toHaveBeenCalled()
   })
+
+  it('builds rock when rock is chosen, so the third entry reaches the transport', () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(ROCK_ID))
+
+    expect(device.asked).toEqual([ROCK_ID])
+  })
+
+  it('keeps the device when one groove is swapped for another', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+
+    act(() => transport().select?.(ROCK_ID))
+    await settle()
+
+    // Both grooves draw the same 22 files, so the device is pointed at the new
+    // one rather than closed and built again.
+    expect(device.built.count).toBe(1)
+    expect(device.retargeted).toEqual([ROCK_ID])
+    expect(device.close).not.toHaveBeenCalled()
+  })
+
+  it('carries a run across a groove-to-groove switch on the device it already has', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await settle()
+    device.start.mockClear()
+
+    act(() => transport().select?.(ROCK_ID))
+    await settle()
+
+    expect(device.built.count).toBe(1)
+    expect(device.start).toHaveBeenCalledTimes(1)
+  })
+
+  it('builds again when the switch crosses to the click, which has its own bank', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(ROCK_ID))
+    await device.finishLoading()
+
+    act(() => transport().select?.('click'))
+    await device.finishLoading()
+
+    expect(device.asked).toEqual([ROCK_ID, 'click'])
+    expect(device.retargeted).toEqual([])
+    expect(device.close).toHaveBeenCalled()
+  })
 })
 
 describe('the transport arming the count-in', () => {
@@ -694,6 +760,7 @@ describe('what the transport builds for real', () => {
    */
   function fakeDevice() {
     const started: { url: string; at: number }[] = []
+    const fetched: string[] = []
     const clock = { now: 0 }
 
     const gain = () => ({
@@ -726,11 +793,12 @@ describe('what the transport builds for real', () => {
     }
 
     vi.stubGlobal('AudioContext', FakeContext)
-    vi.stubGlobal('fetch', (url: string) =>
-      Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(url) }),
-    )
+    vi.stubGlobal('fetch', (url: string) => {
+      fetched.push(url)
+      return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(url) })
+    })
 
-    return { started, clock }
+    return { started, clock, fetched }
   }
 
   /** Ticks a whole number of bars at 120 bpm, a step at a time, so no step is
@@ -828,5 +896,74 @@ describe('what the transport builds for real', () => {
 
     expect(device.started.length).toBeGreaterThan(0)
     expect(device.started.every((hit) => hit.url === CLAVES_SAMPLE_URL)).toBe(true)
+  })
+
+  /** Lets every decode in a real build settle — a macrotask, because the build
+   *  awaits a bank of 22 fetches behind a Promise.all. */
+  const loaded = () =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+  it('fetches nothing at all when one groove is swapped for the other', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('straight-funk'))
+    await loaded()
+
+    // The claves and the whole kit, once.
+    const decoded = device.fetched.length
+    expect(decoded).toBe(KIT_SAMPLE_URLS.length + 1)
+
+    act(() => transport().select?.('rock'))
+    await loaded()
+
+    // Both grooves play the same four voices from the same files, so there is
+    // nothing left to download: the device is pointed at the new groove.
+    expect(device.fetched.length).toBe(decoded)
+  })
+
+  it('fetches the click bank again when the switch crosses to the click', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('rock'))
+    await loaded()
+    const decoded = device.fetched.length
+
+    act(() => transport().select?.('click'))
+    await loaded()
+
+    // A different bank, so this one is a rebuild rather than a swap.
+    expect(device.fetched.length).toBeGreaterThan(decoded)
+  })
+
+  it('plays the groove it was pointed at, not the one it was built for', async () => {
+    const device = fakeDevice()
+    const audio = await buildRealAudio(
+      120,
+      'straight-funk',
+      () => true,
+      () => false,
+    )
+    const decoded = device.fetched.length
+
+    audio.retarget('rock')
+    run(audio, device, 2)
+
+    expect(device.fetched.length).toBe(decoded)
+
+    // Rock states eighths and funk sixteenths, so where the hits land is what
+    // says which groove is sounding. An eighth is 0.25 s at 120 bpm, and
+    // humanize displaces by single-digit milliseconds.
+    const EIGHTH_S = 0.25
+    expect(device.started.length).toBeGreaterThan(0)
+    for (const hit of device.started) {
+      const offGrid = Math.abs(
+        hit.at - Math.round(hit.at / EIGHTH_S) * EIGHTH_S,
+      )
+      expect(offGrid).toBeLessThan(0.01)
+    }
   })
 })

@@ -27,6 +27,7 @@ export type MetronomeSnippets = {
   /** What the source picker is asking. */
   sound: string
   click: string
+  rock: string
   straightFunk: string
   /**
    * The groove's variations toggle. Named for the thing a non-drummer would

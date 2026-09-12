@@ -103,6 +103,19 @@ UI, a hook or the store.
 The slice now holds seven concern folders — `click/`, `countIn/`, `groove/`,
 `remote/`, `setup/`, `tap/` and `transport/`.
 
+**`lib/groove/` is the first to have grown an inner split**, and it is the one
+worth knowing about: `cycle.ts`, `source.ts`, `invariants.ts`, `humanize.ts`,
+`swing.ts` and `kit.ts` are machinery that plays any groove, and `grooves/` holds
+one data file per groove and nothing else
+([ADR 0012](adr/0012-a-groove-is-data.md)). A new groove is a file in `grooves/`
+plus an entry in the transport's registry; it touches no machinery. The arrow
+inside the folder runs one way — machinery never imports a definition, except
+that `source.ts` and `cycle.ts` take one as an argument.
+
+One exception is drawn rather than hidden: `grooves/rock.ts` imports
+`grooves/straightFunk.ts` for the shared humanize record. When a third groove
+wants it, the record moves to `grooves/shared.ts`.
+
 **`lib/countIn/` is the second sideways arrow**, and it was weighed rather than
 added quietly. It reaches into `lib/click/` for `CLICK_PATTERN` because a
 count-in *is* the click, stated for one bar in front of something else — the

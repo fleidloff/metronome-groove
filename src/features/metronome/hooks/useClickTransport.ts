@@ -17,7 +17,10 @@ import {
   type KitVoiceName,
 } from '../lib/groove/kit'
 import { createCountInSource } from '../lib/countIn/source'
-import { createStraightFunkSource } from '../lib/groove/source'
+import type { GrooveDefinition } from '../lib/groove/grooves/definition'
+import { ROCK } from '../lib/groove/grooves/rock'
+import { STRAIGHT_FUNK } from '../lib/groove/grooves/straightFunk'
+import { createGrooveSource } from '../lib/groove/source'
 import { createAudioClock, type VoiceBank } from '../lib/transport/audioClock'
 import {
   createScheduler,
@@ -34,7 +37,23 @@ export type Audio = {
   context: Pick<AudioContext, 'state' | 'resume' | 'close'>
   clock: { readonly currentTime: number; stopSounding(): void }
   scheduler: Scheduler
+  /**
+   * Points this device at another source drawing the same bank, replacing
+   * `scheduler` in place and returning the new one.
+   *
+   * Every groove plays the same four voices from the same 22 files, so a
+   * groove-to-groove switch has nothing left to decode — and closing the
+   * device to rebuild it would fetch all 22 again. Only the click sits in a
+   * different bank, and a switch across that seam still rebuilds.
+   */
+  retarget(id: SourceId): Scheduler
 }
+
+/**
+ * Which bank a source needs. Two sources that answer the same are two sources
+ * one device can play, which is what makes a switch between them free.
+ */
+const bankFor = (id: SourceId) => (id === 'click' ? 'claves' : 'kit')
 
 /**
  * How the audio is built. Injected so a test can drive this hook without a real
@@ -113,6 +132,16 @@ const buildKitBank = async (context: AudioContext): Promise<VoiceBank> => {
 }
 
 /**
+ * Every groove, by the id that names it. Typed over `SourceId` minus the click,
+ * so a fourth source is a compile error here rather than a groove that silently
+ * falls back to another one.
+ */
+const GROOVES: Record<Exclude<SourceId, 'click'>, GrooveDefinition> = {
+  rock: ROCK,
+  'straight-funk': STRAIGHT_FUNK,
+}
+
+/**
  * The click declines variations the same way it declines humanize: it is not
  * given them at all, so `CLICK_SOURCE` never learns what a bar is.
  *
@@ -129,7 +158,10 @@ export const sourceFor = (
 ): Source =>
   id === 'click'
     ? CLICK_SOURCE
-    : createCountInSource(createStraightFunkSource({ variations }), countIn)
+    : createCountInSource(
+        createGrooveSource(GROOVES[id], { variations }),
+        countIn,
+      )
 
 /**
  * The transport plus its third state. `suspend` puts the click between running
@@ -150,15 +182,24 @@ export const buildRealAudio: AudioFactory = async (bpm, id, variations, countIn)
         : { ...(await buildClavesBank(context)), ...(await buildKitBank(context)) }
     const clock = createAudioClock(context, bank)
 
-    return {
-      context,
-      clock,
-      scheduler: createScheduler({
+    const schedulerFor = (forId: SourceId) =>
+      createScheduler({
         clock,
         bpm,
-        source: sourceFor(id, variations, countIn),
-      }),
+        source: sourceFor(forId, variations, countIn),
+      })
+
+    const audio: Audio = {
+      context,
+      clock,
+      scheduler: schedulerFor(id),
+      retarget(next) {
+        audio.scheduler = schedulerFor(next)
+        return audio.scheduler
+      },
     }
+
+    return audio
   } catch (reason) {
     await context.close()
     throw reason
@@ -446,7 +487,24 @@ export function useClickTransport(
         live.running = false
         live.suspended = false
         silence()
-        discard()
+
+        /**
+         * A switch inside one bank keeps the device. Both grooves draw
+         * `KIT_SAMPLE_URLS`, so the kit is already decoded: closing the context
+         * here would refetch 22 files to play samples the page is holding.
+         * Only the seam to the click, which has a bank of its own, rebuilds.
+         */
+        const device =
+          bankFor(next) === bankFor(live.sourceId) ? live.audio : null
+
+        if (device) {
+          const scheduler = device.retarget(next)
+          scheduler.setTempo(live.bpm)
+          scheduler.onBeat((beat) => live.pending.push(beat))
+        } else {
+          discard()
+        }
+
         live.sourceId = next
 
         if (wasRunning) {

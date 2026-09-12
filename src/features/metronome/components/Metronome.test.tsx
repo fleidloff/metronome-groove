@@ -627,16 +627,29 @@ describe(app.name, () => {
 
   describe('what it plays', () => {
     const GROOVE = 'straight-funk'
+    const ROCK = 'rock'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
 
-    it('offers the click and the groove, with the click already chosen', () => {
+    it('offers the click and both grooves, with the click already chosen', () => {
       render(<Metronome />)
 
+      // The order is read top-down by someone choosing: the click because it
+      // is the default, then rock because docs/music.md calls it the baseline.
       expect(
         screen.getAllByRole('option').map((option) => option.textContent),
-      ).toEqual([metronome.click, metronome.straightFunk])
+      ).toEqual([metronome.click, metronome.rock, metronome.straightFunk])
       expect(picker()).toHaveValue('click')
+    })
+
+    it('asks for rock the moment it is chosen, like any other groove', () => {
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: ROCK } })
+
+      expect(select).toHaveBeenCalledWith(ROCK)
+      expect(picker()).toHaveValue(ROCK)
     })
 
     it('asks for nothing but the click until someone picks something else', () => {
@@ -887,6 +900,22 @@ describe(app.name, () => {
       expect(select).toHaveBeenCalledWith('straight-funk')
     })
 
+    it('tells the transport about a restored rock, which SOURCE_IDS is what validates', () => {
+      // A stored id the validation list does not carry falls back to the
+      // click, so this is the assertion that 'rock' survives a reload.
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: 'rock' }),
+      )
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(select).toHaveBeenCalledWith('rock')
+      expect(
+        screen.getByRole('combobox', { name: metronome.sound }),
+      ).toHaveValue('rock')
+    })
+
     it('never writes its defaults over a stored setup while opening', () => {
       // The read lands a frame after mount, so without a guard the persist
       // effect fires first with the defaults and puts 100 on disk before 137
@@ -923,6 +952,7 @@ describe(app.name, () => {
 
   describe('the fills toggle', () => {
     const GROOVE = 'straight-funk'
+    const ROCK = 'rock'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
     const box = () => screen.queryByRole('checkbox', { name: metronome.fills })
@@ -951,6 +981,26 @@ describe(app.name, () => {
       pick(GROOVE)
       pick('click')
 
+      expect(box()).toBeNull()
+    })
+
+    it('is one box for every groove, so unticking it on rock holds on funk', () => {
+      const { transport, setFills } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(ROCK)
+      expect(box()).toBeChecked()
+      fireEvent.click(box()!)
+      expect(setFills).toHaveBeenLastCalledWith(false)
+
+      pick(GROOVE)
+
+      // One boolean, not one per groove: switching grooves is not a way to get
+      // the fills back, and the transport is not told otherwise.
+      expect(box()).not.toBeChecked()
+      expect(setFills).toHaveBeenLastCalledWith(false)
+
+      pick('click')
       expect(box()).toBeNull()
     })
 
@@ -1085,6 +1135,7 @@ describe(app.name, () => {
 
   describe('the count-in toggle', () => {
     const GROOVE = 'straight-funk'
+    const ROCK = 'rock'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
     const box = () => screen.queryByRole('checkbox', { name: metronome.countIn })
@@ -1114,6 +1165,21 @@ describe(app.name, () => {
       pick(GROOVE)
       pick('click')
 
+      expect(box()).toBeNull()
+    })
+
+    it('arrives with rock exactly as it does with funk', () => {
+      render(<Metronome />)
+
+      // The guard is the click, not a particular groove: every groove has a
+      // count-in and only the click has none.
+      pick(ROCK)
+      expect(box()).toBeVisible()
+
+      pick(GROOVE)
+      expect(box()).toBeVisible()
+
+      pick('click')
       expect(box()).toBeNull()
     })
 

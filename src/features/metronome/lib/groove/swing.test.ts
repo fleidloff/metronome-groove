@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
-import { STRAIGHT_FUNK_SWING, swingOffset } from './swing'
+import { STRAIGHT_FUNK_SWING } from './grooves/straightFunk'
+import { swingOffset } from './swing'
 
 const SECONDS_PER_STEP = stepSeconds(100, STEPS_PER_BAR)
 

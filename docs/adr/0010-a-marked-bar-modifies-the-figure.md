@@ -36,8 +36,8 @@ every fifteen seconds, decide the app was off, and go back to the click."*
 invariants bind every bar this app will ever play, marked or not:
 
 1. `kick` sounds on step 0 at velocity 0.95.
-2. Every one of the 16 steps carries at least one hit, so the grid is never
-   interrupted.
+2. Every step of the groove's **stated subdivision** carries at least one hit.
+   The positions between those steps are rests, not holes.
 3. Steps 0–7 are the ordinary figure — a marked bar identifies itself as this
    groove before it departs, and a fill lives in the second half of the bar.
 4. Nothing in a marked bar changes `stepSeconds`, swing, the seed or the
@@ -45,6 +45,25 @@ invariants bind every bar this app will ever play, marked or not:
 5. Every `hatOpen` step is followed by a `hatClosed` step inside the same bar.
 6. Adjacent non-ghost velocities in a designed contour differ by at least
    `2 × DYNAMIC_RANGE_DB × velocityJitter` — today 0.08, or 3.2 dB.
+
+**Invariant 2 was amended by V10, and the amendment is about rests.** It
+originally read *"every one of the 16 steps carries at least one hit, so the
+grid is never interrupted"*, which was written when one groove existed and is
+false of rock's ordinary bar: rock states eighths and leaves the odd steps
+silent. A silent step is a rest, and that is the distinction the invariant was
+always reaching for.
+
+So a groove now declares a `subdivision` alongside the grid it is written on —
+16 for funk, 8 for rock — and the invariant reads against that. Funk is
+unaffected: its stated subdivision is the sixteenth, so all sixteen steps still
+carry hits. What the invariant still forbids is unchanged, and it is the whole
+point of it: **a marked bar may not open a hole in the subdivision the groove
+has declared.** That is what would turn a fill into a gap click.
+
+A groove written on a grid finer than it states has free capacity that only a
+fill spends. Rock's fill doubles to sixteenths on the odd steps of the second
+half, which is a change of content and never of grid — invariant 4 holds
+alongside this, not against it.
 
 **Invariant 6 is derived, not chosen.** `gainTrim` is ±1.6 dB per hit, so two
 notes 0.08 apart are 3.2 dB apart and worst-case jitter closes exactly that:
@@ -62,8 +81,10 @@ abandoning the bar is the one thing a metronome may not do.
 ## Consequences
 
 **What this buys.** A groove can stop being wallpaper without stopping being a
-reference. The player keeps a stated downbeat, an uninterrupted sixteenth grid
-and two ordinary bars in every four.
+reference. The player keeps a stated downbeat, an uninterrupted
+subdivision — whichever one the groove declares — and two ordinary bars in
+every four. This sentence read *"an uninterrupted sixteenth grid"* until V10;
+the sixteenth was never the promise, the groove's own stated subdivision was.
 
 **What it costs, and this was argued.** The persona asked for three anchors —
 kick on 1, snare on 2 and 4, **and** the hat stating sixteenths. The user

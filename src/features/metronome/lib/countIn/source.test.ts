@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { BEATS_PER_BAR, STEPS_PER_BAR, isQuarter, stepSeconds } from '@/lib/steps'
 import { ACCENT_VELOCITY, CLICK_PATTERN, EVEN_VELOCITY } from '../click/pattern'
-import { createStraightFunkSource } from '../groove/source'
+import { createGrooveSource } from '../groove/source'
+import { STRAIGHT_FUNK } from '../groove/grooves/straightFunk'
 import type { Hit, Humanize, Source } from '../transport/source'
 import { createCountInSource } from './source'
 
@@ -234,8 +235,8 @@ describe('a groove wrapped and armed', () => {
   const RUN = STEPS_PER_BAR * CYCLE_BARS
 
   it('plays from its first sounding bar what an unwrapped groove plays from its own', () => {
-    const bare = createStraightFunkSource()
-    const wrapped = createCountInSource(createStraightFunkSource(), () => true)
+    const bare = createGrooveSource(STRAIGHT_FUNK)
+    const wrapped = createCountInSource(createGrooveSource(STRAIGHT_FUNK), () => true)
 
     expect(wrapped.steps).toBe(bare.steps)
 
@@ -254,8 +255,8 @@ describe('a groove wrapped and armed', () => {
   })
 
   it('is not the same groove read a bar late, which is what passing the raw step would give', () => {
-    const bare = createStraightFunkSource()
-    const wrapped = createCountInSource(createStraightFunkSource(), () => true)
+    const bare = createGrooveSource(STRAIGHT_FUNK)
+    const wrapped = createCountInSource(createGrooveSource(STRAIGHT_FUNK), () => true)
 
     const played = upTo(RUN).map((n) => wrapped.hitsAt(bare.steps + n))
     const readLate = upTo(RUN).map((n) => bare.hitsAt(bare.steps + n))
@@ -264,8 +265,8 @@ describe('a groove wrapped and armed', () => {
   })
 
   it('puts the claves in the count bar and nowhere after it', () => {
-    const bare = createStraightFunkSource()
-    const wrapped = createCountInSource(createStraightFunkSource(), () => true)
+    const bare = createGrooveSource(STRAIGHT_FUNK)
+    const wrapped = createCountInSource(createGrooveSource(STRAIGHT_FUNK), () => true)
 
     const counted = upTo(bare.steps).flatMap((step) => wrapped.hitsAt(step))
 
@@ -324,8 +325,8 @@ describe('the step takes are indexed on', () => {
 
 describe('a groove wrapped and armed, in the takes it draws', () => {
   it('draws from its first sounding bar what an unwrapped groove draws from its own', () => {
-    const bare = createStraightFunkSource()
-    const wrapped = createCountInSource(createStraightFunkSource(), () => true)
+    const bare = createGrooveSource(STRAIGHT_FUNK)
+    const wrapped = createCountInSource(createGrooveSource(STRAIGHT_FUNK), () => true)
     const run = STEPS_PER_BAR * CYCLE_BARS
 
     const played = upTo(run).map((n) => wrapped.takeStep?.(bare.steps + n) ?? bare.steps + n)

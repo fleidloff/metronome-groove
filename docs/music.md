@@ -121,12 +121,37 @@ else in a bossa or a samba is written around it.
 
 One bar, steps 0–15, where 0 is beat 1 and 4, 8, 12 are beats 2, 3, 4.
 
-**Straight 8th rock**
+**Straight 8th rock** — shipped as V10
 ```
 hatClosed  0 2 4 6 8 10 12 14
 snare      4 12
 kick       0 8
 ```
+
+**Rock is written on the 16-step grid and *states* the eighth.** The table's
+`Grid 8` column above is the felt subdivision, not the notation. The deciding
+argument is ADR 0010's invariant 4: a marked bar may not change `stepSeconds`,
+so on a genuine 8-step bar the finest event placeable anywhere is an eighth and
+rock's fill could only be four eighth notes — a stop, not a fill. The eight
+empty odd steps are free capacity that only the fill spends.
+
+That distinction is now a property every groove carries, and it is what
+[ADR 0010](adr/0010-a-marked-bar-modifies-the-figure.md)'s amended invariant 2
+reads against: the stated subdivision may not be interrupted, and the positions
+between its steps are **rests, not holes**.
+
+**The bar line is the kick velocity and nothing else.** Every other element of
+rock's ordinary bar is invariant under a half-bar shift — the hat has period 4,
+the snare sits on 4 and 12 at one velocity, the kick on 0 and 8. With the two
+kicks equal the figure states a two-beat loop and the downbeat is inaudible.
+`kick` 0.95 against 0.86 is 3.60 dB and is the whole of that cue.
+
+**Its fill adds where funk's subtracts.** Funk is already maximally dense, so
+its only gesture is the hat stopping; rock leaves eight steps empty, so its
+gesture is the subdivision doubling to sixteenths for the last six steps. Two
+further inversions: the kick keeps time underneath, which is strictly better for
+a metronome, and the arrival is the downbeat rather than step 15, so the fill
+crescendos *into* bar 1.
 
 **16th funk** (Funky Drummer shape, thinned)
 ```
@@ -272,6 +297,9 @@ the audio wherever it goes.
 ---
 
 ## 4. What the pack can and cannot play
+
+**Built so far:** 16th funk (V6) and straight 8th rock (V10), both on the same
+four voices and the same 22 files.
 
 **Can play, today:** straight rock, 16th funk, half-time, shuffle, half-time
 shuffle, jazz ride, boom-bap, second line, bossa nova. That is nine of the

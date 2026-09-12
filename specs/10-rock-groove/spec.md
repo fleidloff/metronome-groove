@@ -10,10 +10,6 @@ Started 2026-09-12 · `/vibe-with-docs`
 * *"It gets its own variation bars like the funk groove does"* — a light bar 2
   and a fill bar 4, under [ADR 0010](../../docs/adr/0010-a-marked-bar-modifies-the-figure.md).
 
-## Done when
-
-* (to be written)
-
 ## Decided
 
 * **It is called "rock"**, not "straight 8th rock". The user's word. `SourceId`
@@ -176,6 +172,161 @@ fails.
 string, swing declared at 0, and `isQuarter(step, 16)` keeps the four dots
 working unchanged.
 
+## The three bars
+
+Frozen. Written on a 16-step grid, `steps: 16`, `subdivision: 8`. The odd steps
+are rests in bars 1–3. Voice order `kick, snare, hatClosed, hatOpen`, as
+`figure.ts` writes it. Every dB below is the **rendered** level from
+`velocity.ts`'s decibel-linear curve and `kit.ts`'s measured layer nominals, not
+a velocity difference.
+
+### Bar 1 / 3 — ordinary
+
+| Voice | Steps | Velocity | Rendered |
+| :-- | :-- | --: | --: |
+| `kick` | 0 | 0.95 | −18.21 dBFS |
+| `kick` | 8 | 0.86 | −21.81 dBFS |
+| `snare` | 4, 12 | 0.95 | −17.67 dBFS |
+| `hatClosed` | 0, 4, 8, 12 | 0.90 | −30.54 dBFS |
+| `hatClosed` | 2, 6, 10, 14 | 0.82 | −33.73 dBFS |
+
+No `hatOpen`, no ghosts, nothing on 1, 3, 5, 7, 9, 11, 13, 15.
+
+### Bar 2 — light
+
+Bar 1 with **one** edit: step 10's closed hat is removed and an open hat takes
+it. Step 10 carries `hatOpen` only; step 14 stays closed.
+
+| Voice | Steps | Velocity | Rendered |
+| :-- | :-- | --: | --: |
+| `kick` | 0 | 0.95 | −18.21 dBFS |
+| `kick` | 8 | 0.86 | −21.81 dBFS |
+| `snare` | 4, 12 | 0.95 | −17.67 dBFS |
+| `hatClosed` | 0, 4, 8, 12 | 0.90 | −30.54 dBFS |
+| `hatClosed` | 2, 6, 14 | 0.82 | −33.73 dBFS |
+| `hatOpen` | 10 | 0.80 | −27.47 dBFS |
+
+### Bar 4 — fill
+
+Steps 0–8 are bar 1 verbatim. Step 9 is a rest. Steps 10–15 are the sixteenths.
+
+| Voice | Steps | Velocity | Rendered |
+| :-- | :-- | --: | --: |
+| `kick` | 0 | 0.95 | −18.21 dBFS |
+| `kick` | 8, 12 | 0.86 | −21.81 dBFS |
+| `snare` | 4 | 0.95 | −17.67 dBFS |
+| `snare` | 10 | 0.70 | −27.69 dBFS |
+| `snare` | 11 | 0.62 | −30.89 dBFS |
+| `snare` | 12 | 0.78 | −24.49 dBFS |
+| `snare` | 13 | 0.70 | −27.69 dBFS |
+| `snare` | 14 | 0.86 | −21.27 dBFS |
+| `snare` | 15 | 0.78 | −24.49 dBFS |
+| `hatClosed` | 0, 4, 8, 12 | 0.90 | −30.54 dBFS |
+| `hatClosed` | 2, 6 | 0.82 | −33.73 dBFS |
+| `hatOpen` | 10 | 0.80 | −27.47 dBFS |
+
+No `hatClosed` on 10 or 14.
+
+**The hat line here was revised after the first listening pass** — see
+`## What the ear changed` at the end of this file. It originally stopped after
+step 8 and opened nothing.
+
+### The rest of the definition
+
+`swing: 0`. `humanize: STRAIGHT_FUNK_HUMANIZE`, the shared record unchanged.
+`seed: 0x5f_72_6f_63`, which must differ from funk's `0x5f_75_6e_6b` — the value
+is not a musical decision, only its being fixed is.
+
+### Why these numbers and not their neighbours
+
+* **`kick` 0.95 / 0.86 — 3.60 dB.** The only asymmetry in the bar. Not
+  0.90/0.86: 1.6 dB is half of `2 × DYNAMIC_RANGE_DB × velocityJitter`, so
+  jitter alone could reverse it and the bar line would vanish on some bars and
+  not others. 0.95 is also invariant 1's mandated step-0 velocity, so it is not
+  free.
+* **`snare` 0.95, against funk's 0.92.** Rock has no ghosts, so the snare has no
+  lower rung to define it against and its authority has to come from absolute
+  level. It is also the ceiling that forces the fill's arrival into the next
+  bar. Freely reversible to 0.92.
+* **`hatClosed` 0.90 / 0.82 — 3.19 dB, two rungs.** The top rung is funk's top
+  rung unchanged, so the same hat leads both grooves. The lower is 0.82 rather
+  than funk's 0.78 because 0.78 gives 4.79 dB — half of funk's 9.62 dB span —
+  and the hat would read as funk's contour thinned rather than as even eighths
+  with an accent. 0.08 is the minimum invariant 6 permits, which is the point:
+  this ladder is meant to be barely a ladder.
+* **The accent is on 0, 4, 8, 12**, not on the "&"s. Quarter-accented is the
+  rock hat; accenting the offbeats is a funk device and would fight a kick and
+  snare that are all on quarters.
+* **`hatOpen` 0.80, not funk's 0.76.** Derived rather than copied, per
+  [ADR 0008](../../docs/adr/0008-sample-calibration-is-derived-not-copied.md).
+  Funk's open hat sits 6.26 dB above the closed hat it displaces; rock displaces
+  a *louder* closed hat, so the same designed lift needs 0.80. Reusing 0.76
+  would give 4.66 dB — a weaker event in the groove that has less open hat to
+  lean on, not more.
+* **One edit in bar 2, not funk's two.** Funk's second edit raises the step-15
+  ghost; rock has no ghosts and step 15 is empty. Every other available edit is
+  an addition on an odd step, which would spend bar 4's whole gesture two bars
+  early.
+* **Fill `snare` 0.78 on step 12 — 6.82 dB under the backbeat.** The largest
+  departure in the design and the second listening item. The backbeat is not
+  removed but demoted to the middle rung of the crescendo; 6.82 dB is two full
+  ladder steps and a half, so jitter cannot restore it to backbeat authority.
+* **The crescendo is two interleaved ladders, not one run.** A strictly rising
+  six-note ladder at the 0.08 minimum, pinned at 0.78 on step 12, would end at
+  1.02 — off the scale. So the stated eighths 10, 12, 14 rise 0.70 → 0.78 →
+  0.86 and the added sixteenths 11, 13, 15 rise 0.62 → 0.70 → 0.78 one rung
+  under, in parallel. The accents land on the groove's own subdivision, which is
+  the metronome argument and the same reason the kick keeps time.
+* **The fill peaks at 0.86**, 3.60 dB under the backbeat and 3.06 dB under the
+  arriving kick. Nothing in the gesture out-shouts the figure.
+* **`hatOpen` 0.80 on step 10 of the fill — bar 2's own event, at bar 2's own
+  level.** Not a re-derivation: the reference is no longer a displaced
+  neighbour but the light bar itself, so the absolute level is what carries.
+  Bars 2 and 4 rhyme, and the light bar reads as a one-note preview of the
+  fill.
+* **`hatClosed` 0.90 returns on step 12, and invariant 5 is why.** An open hat
+  with no closed hat after it inside the bar rings into the downbeat the fill
+  exists to arrive at. Step 12 is the only position that keeps the ring to one
+  eighth, as bar 2's is — step 14 would give the longest open hat in the app,
+  750 ms at 80 bpm. 0.90 is the ordinary bar's own value there, so the edit
+  introduces no new rung, and it re-marks a beat 4 whose snare is demoted 6.82
+  dB.
+* **`kick` 8 and 12 equal at 0.86**, deliberately. Two equal velocities are not
+  a contour, so invariant 6 has nothing to bind — and the kick line is named as
+  excluded from it in ADR 0010 anyway.
+
+### The half-bar asymmetry, in numbers
+
+Every element of the ordinary bar is invariant under a shift of 8 steps except
+one:
+
+| Element | Steps | Under +8 | Invariant? |
+| :-- | :-- | :-- | :-- |
+| `hatClosed` 0.90 | 0, 4, 8, 12 | same set | yes |
+| `hatClosed` 0.82 | 2, 6, 10, 14 | same set | yes |
+| `snare` 0.95 | 4, 12 | same set, same velocity | yes |
+| `kick` positions | 0, 8 | same set | yes |
+| **`kick` velocities** | 0 → 0.95, 8 → 0.86 | 0 → 0.86, 8 → 0.95 | **no** |
+
+The shifted bar differs at exactly two of sixteen steps, by 3.60 dB, on one
+voice. Set the two kicks equal and the bar becomes exactly invariant — a
+two-beat loop with no downbeat. **That is what Track B step 2 asserts**, not the
+two velocities.
+
+### The listening items, each with its one cheapest fallback
+
+| # | Item | Fallback |
+| :-- | :-- | :-- |
+| 1 | The bar line with Fills off | `kick` step 8 → 0.82, widening to 5.20 dB |
+| 2 | Bar 4 beat 4, the backbeat 6.82 dB down | `snare` step 12 → 0.86, ladder to 0.78 / 0.86 / 0.94 |
+| 3 | The hat ladder reading as even eighths | lower rung → 0.86, which is below invariant 6 and would have to be declared a flat line |
+| 4 | Backbeat 0.95 against funk's 0.92 | → 0.92. Free; nothing else reads it |
+| 5 | The open hat at 80 bpm, ringing 375 ms into its choke | `hatOpen` step 10 → 0.76 |
+| 6 | Fill density, six sixteenths every 12.0 s at 80 bpm | drop steps 11 and 13 |
+
+**None of the six has been heard.** The dB figures say what the levels are, not
+whether the bar line can be found.
+
 ## Done when
 
 * **A third entry in the select box plays rock**, on the same four voices and
@@ -210,3 +361,36 @@ confined to one folder.
 
 * Nothing. The spec is settled; open questions now belong to
   [tech-spec.md](tech-spec.md).
+
+## What the ear changed
+
+The first listening pass produced one verdict, and it overturned a design
+decision rather than a number.
+
+> *"I don't like the fill after 4 bars. I think the hat should also do something
+> similar like open-hat on the 2nd bar fill"*
+
+The fill originally stopped the closed hat after step 8 and opened none, on the
+musician's argument that *"the hat and the snare state the same subdivision in
+the same register, and a hat under the snare run would make the doubling a
+texture change rather than a rhythmic one."* That argument is not wrong; it lost
+to the ear, which is the order those two settle in.
+
+**Two lines changed**, both inside steps 8–15 so invariant 3 is untouched:
+`hatOpen` 0.80 added on step 10, and `hatClosed` 0.90 extended to step 12.
+`sixInvariantViolations(ROCK)` stays empty and the snare ladder is untouched.
+
+**What it trades away**, stated rather than glossed: the open hat sits 0.22 dB
+*above* the snare's 0.70 at step 10, so the crescendo's bottom rung is masked at
+the instant the fill departs and the ladder audibly begins at step 12. And the
+closed hat on beat 4 briefly re-states the eighth pulse inside a sixteenth run,
+so the second half reads a little more as texture and a little less as the
+subdivision doubling.
+
+**The alternative, if this is not what the ear wanted.** "The announcement":
+`hatOpen` 0.88 *substituting* the closed hat on step 8, `hatClosed` 0.90 on step
+12, step 10 left hat-free. The hat then opens on beat 3 *before* the fill starts
+and decays across its entry, which is the more idiomatic rock placement —
+drummers open the hat ahead of a fill, not on it. It was not picked because the
+stated reference was bar 2, and this is a different event at a different step
+and level. Three numbers in the same `FILL` const.

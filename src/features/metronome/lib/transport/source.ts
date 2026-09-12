@@ -7,8 +7,11 @@ export type VoiceName = 'claves' | 'kick' | 'snare' | 'hatClosed' | 'hatOpen'
  * still one declaration — a validator that needs to check an id at runtime
  * (reading a stored setup, say) checks against this rather than against a
  * second copy of the union.
+ *
+ * The order is the select box's order: the click first because it is the
+ * default, then rock, which `docs/music.md` calls the baseline.
  */
-export const SOURCE_IDS = ['click', 'straight-funk'] as const
+export const SOURCE_IDS = ['click', 'rock', 'straight-funk'] as const
 
 export type SourceId = (typeof SOURCE_IDS)[number]
 
