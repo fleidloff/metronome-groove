@@ -13,3 +13,4 @@ record is edited to ⛔ **Superseded by**. Nothing here is deleted.
 | :-- | :-- | :-- | :-- |
 | [0001](0001-enforced-import-graph.md) | Enforce the import graph with generated per-feature ESLint zones | ✅ Accepted | 2026-09-12 |
 | [0002](0002-tailwind-v4.md) | Tailwind v4 as the styling layer | ✅ Accepted | 2026-09-12 |
+| [0003](0003-snippets.md) | User-facing text lives in `src/lib/snippets/`, by language | ✅ Accepted | 2026-09-12 |

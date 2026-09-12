@@ -1,0 +1,14 @@
+{
+  "note": "Provenance for every sample shipped in this app. Copied from the sibling project's pack; the files are byte-identical to it, so these records stay true. CC0 requires no attribution \u2014 this exists so nobody has to rediscover what a file is or what was done to it.",
+  "samples": [
+    {
+      "file": "claves_mf.flac",
+      "source": "Versilian Community Sample Library (VCSL)",
+      "sourceFile": "Idiophones/Struck Idiophones/Claves/Legacy/claves_mf.wav",
+      "url": "https://github.com/sgossner/VCSL",
+      "licence": "CC0",
+      "modifications": "capped at 0.4 s, faded out over the last 80 ms, downmixed to mono, 44.1 kHz 16-bit FLAC (not trimmed: the source lead-in is kept; not normalised: the take-to-take level difference is the round-robin variation the renderer plays) then resampled down a perfect fifth (playback ratio 2^(-7/12) = 0.66742, so the strongest partial moves from 2337 Hz to 1556 Hz) and re-capped at 0.4 s with a fresh 80 ms fade-out \u2014 a bigger pair of sticks, and the take-to-take level difference is preserved: the two alternates were 2.53 dB apart before and are 2.50 dB apart after",
+      "shippedAs": "/samples/claves_mf.flac"
+    }
+  ]
+}

@@ -24,6 +24,10 @@ unpleasant about it — four beeps a bar, nothing else, and playing to it makes
 them stiff in a way playing with someone never does. They know the click is
 telling the truth. They have never wanted to listen to it for twenty minutes.
 
+They have also never *looked* at it. It sits behind them on the amp with its
+face to the wall. A metronome is a sound to them, and the display is packaging
+— which is exactly how they learned everything else they can play.
+
 Plays Wordle every morning.
 
 ## What they want
@@ -33,6 +37,9 @@ Plays Wordle every morning.
 - A sound in one tap. Open the page, hit play, hands back on the guitar.
 - To pick the tempo by ear as often as by number — they heard a thing and want
   to sit in it, not calculate it.
+- To work entirely by ear once it is playing. Where the bar starts, where the
+  backbeat is, whether they have slipped — they expect to hear all of it. They
+  are not going to check.
 - To make the reference thinner when they're ready. Fewer beats, fewer
   instruments, still a groove.
 - Something to play *against*, not to follow. A backbeat is a second musician;
@@ -43,8 +50,9 @@ Plays Wordle every morning.
 - A beep. The reason the metronome on the shelf is on the shelf.
 - Setup before sound: an account, a paywall, a permission prompt, a tutorial, a
   kit to assemble before the first bar plays.
-- A screen they have to hold. Their hands are on an instrument and the phone is
-  propped up two metres away.
+- A screen they have to watch. Their hands are on an instrument and their eyes
+  are on the fretboard or shut. A bar they can only follow by looking is a bar
+  they will lose.
 - Being graded. A streak, a score, a "you rushed 4%" — that is homework, and
   homework is the thing they quit three times.
 - A groove that breathes. If it drifts, it is worse than the click, and they
@@ -64,8 +72,15 @@ Plays Wordle every morning.
   of voices against beats is a drum machine and they did not ask for one.
 - **Tap tempo is not a nice-to-have.** It is how an ear-trained player states a
   tempo.
-- **Readable at two metres.** Big beat markers, big numbers, nothing that needs
-  a second look. The same row they tap to mute is the one that shows the bar.
+- **The ear carries everything; the screen carries nothing.** Every reference
+  Sam needs while playing has to be audible on its own — the downbeat, the
+  backbeat, the subdivision, which beats they muted. Nothing may be knowable
+  only by looking. Switch the display off mid-bar and the app still works.
+- **How beats are displayed is a low-stakes decision.** Sam glances at it
+  between takes, not during them. Big and legible at two metres stays the
+  sensible default, but it is a default and not a requirement — no feature gets
+  designed around the visual, and the visual gets effort only once everything
+  audible is right.
 - **No account, and nothing to lose.** The setup lives in the browser. Coming
   back tomorrow costs nothing and starts where they stopped.
 - **The lead register stays empty.** Sam brings the melody instrument. Drums,

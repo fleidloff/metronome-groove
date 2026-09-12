@@ -47,6 +47,17 @@ by Vitest. `src/components/tokens.test.ts` pins the closed `Space` scale with a
 while failing the build. Know which command holds a given guard before trusting
 a green run, and say so in the test when it is not the obvious one.
 
+## Changing a word must never fail a test
+
+Rewording anything the user is shown is one edit in `src/lib/snippets/en/`, and
+the suite stays green. A test that quotes the app's words makes the test file a
+second place that wording lives, so a reword breaks a test that has nothing to
+do with wording — and everyone learns that changing copy is risky.
+
+Assert *which* snippet a thing shows by importing it:
+`getByRole('button', { name: metronome.start })`. `snippets.test.ts` enforces
+it, and [ADR 0003](adr/0003-snippets.md) says what it excludes and why.
+
 ## Structural tests
 
 Some conventions no linter can check are guarded by tests that read the tree or
@@ -59,6 +70,7 @@ the source from disk and fail when it drifts. They run under `npm test`, not
 | `src/app/route-boundary.test.ts` | a route reaches a feature only through its `index.ts` — including `vi.mock`, dynamic `import()` and `require()`, which lint cannot see |
 | `src/app/theme.test.ts` | every custom property `@theme` reaches for is declared somewhere, and the body is dressed in the theme |
 | `eslint.config.test.ts` | each live lint zone fires on a bad import and stays quiet on a good one |
+| `src/lib/snippets/snippets.test.ts` | the language folder is private to the index, and **no test anywhere writes out what a snippet says** |
 
 The guidelines say which rule each one stands behind, and which rules
 `npm run lint` enforces instead.

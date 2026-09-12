@@ -302,11 +302,30 @@ domain, so by the fourth bar alone it would belong to a slice. It is in
 renders words — a `not-found.tsx` — may not import a feature's internals, so
 app-wide wording has to sit above the slices.
 
-**What a linter stops, and what it does not.** Nothing mechanical fires on an
-inline string in a component. The next inline label is caught in review or not
-at all.
+**And the rule that has teeth: changing a snippet must never fail a test.** A
+test asserts *which* snippet a thing shows by importing it, never by copying
+what it says:
 
-*human-checked* — a linter cannot tell `'Allegro'` from `'No streak yet'`.
+```tsx
+// not this — the word, copied. Rewording the button now fails this test.
+screen.getByRole('button', { name: 'Start' })
+
+// this
+screen.getByRole('button', { name: metronome.start })
+```
+
+**What a linter stops, and what it does not.** Nothing mechanical fires on an
+inline string in a component — the next inline label is caught in review or not
+at all. But the *test* half is guarded:
+`src/lib/snippets/snippets.test.ts` reads every string the module can render,
+including what its interpolating functions return, and fails if any test file
+outside the module writes one down. It excludes module specifiers (a path
+containing the app's name is not prose), test titles (rewording cannot fail
+them), and the module's own tests (where a sentence must be written out).
+
+*human-checked* for the component half — a linter cannot tell `'Allegro'` from
+`'No streak yet'`. *Guarded by a test* for the assertion half. See
+[ADR 0003](adr/0003-snippets.md).
 
 **`src/lib/` is a leaf: nothing in it may import `src/features/` or
 `src/components/`.** Being a leaf is the mechanism, not tidiness: it is what

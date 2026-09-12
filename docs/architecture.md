@@ -63,15 +63,29 @@ Every pair not drawn is an error.
 
 The graph above is between directories. Inside a feature folder there is a
 second graph that the directories do not show: which of the slice's concerns may
-reach which. **This project has not drawn one yet**, and that is the honest
-state rather than an omission — a map is worth writing when a slice has grown
-enough concerns that a reader cannot hold them, and not before. Today
-`src/features/metronome/` holds one component and its index; there is no `lib/`
-and nothing to map.
+reach which. **This project has not drawn one yet**, and that is a judgement
+rather than an omission: `src/features/metronome/` now holds `components/`,
+`hooks/` and one concern folder, `lib/click/`. One concern is not a graph.
 
-Zone 6 is nonetheless already configured for it, so the first module placed in
-`src/features/metronome/lib/` is bounded on the day it is written rather than
-the day someone notices.
+The trigger for drawing it is a **second** concern folder — the moment a
+question like "may the groove reach the click?" has an answer worth writing
+down. Until then the arrows are:
+
+| Arrow | Behind it |
+| :-- | :-- |
+| `components/` → `lib/click/` | the composer reads `tempo.ts`'s range |
+| `hooks/` → `lib/click/` | `useClickTransport.ts` builds the scheduler and the audio clock |
+| `hooks/` → `components/` | **type-only**: the hook imports `Transport` from `Metronome.tsx`, pointing at its own consumer. No zone forbids it and it erases at build, but the contract would sit better in `lib/click/` |
+| `lib/click/` → `@/lib/velocity` | gain per beat, and nothing else in the app |
+| `components/`, `lib/` → `@/lib/snippets` | every word the user is shown |
+
+Zone 6 enforces the one that matters: nothing in `lib/click/` reaches back up
+into UI, a hook or the store.
+
+`lib/click/` has no `index.ts` and has not earned one — its modules are imported
+directly, which
+[coding-guidelines.md](coding-guidelines.md#feature-slices) says is correct
+until measured growth says otherwise.
 
 When it is worth writing, this is the section it goes in, and three things have
 to be true of it:

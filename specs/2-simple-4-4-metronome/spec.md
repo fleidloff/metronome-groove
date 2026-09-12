@@ -176,9 +176,45 @@ unaffected, so a fake-clock test would have passed while the indicator led the
 sound by 8.3 ms — 2.5% of a beat at 180 bpm — and the error would only have
 surfaced as two voices refusing to line up, long after this change shipped.
 
+## Signed off by ear and by eye — 2026-09-12
+
+The two things nothing in this pipeline can check, checked by a person running
+the app locally:
+
+* **The accent reads.** "the first beat is accented (lightly)". That closes
+  `## Done when` 2, which was graded partly by design until someone listened.
+* **The dots are in sync with the audio.** That closes the change's declared
+  riskiest part end to end — the 8.3 ms lead-in compensation, and the
+  animation-frame bridge that holds each beat until the audio clock reaches the
+  moment it is heard rather than lighting it up to 100 ms early when it was
+  queued.
+
+* **Two-metre legibility: accepted on the user's say-so, not separately
+  verified.** Asked directly whether they had stood back from the screen, the
+  answer was "good enough — mark it done" after running it locally. So `## Done
+  when` 5 is closed on that basis. What the tests actually assert is proxies —
+  the dots differ by `size-16 sm:size-24` against `size-9 sm:size-14` plus a
+  ring, not by colour alone, which is Sam's condition. Nobody measured the
+  distance. If the dots ever turn out to be too small in a real room, this is
+  the paragraph that says the check was accepted rather than made.
+
+* **The snippets module stays inside V2 rather than becoming its own change.**
+  The verifier flagged that it answers none of V2's five bullets while editing
+  every component, so reverting V2 also reverts it and ADR 0003. Accepted
+  knowingly: the cost only bites on a revert of V2 specifically, and
+  back-writing a spec folder for finished work is bookkeeping rather than a
+  record of a decision.
+
+**On the word "lightly".** The `musician` set the accent at 6.0 dB and gave an
+explicit escalation before anyone listened: *"If you cannot hear where bar 1
+starts without counting deliberately, go to 9 dB — `ACCENT_VELOCITY = 0.725`.
+No other value changes."* The sign-off says the accent is audible, so 6.0 dB
+stands. The lever is recorded here so a later change is a one-constant edit
+rather than a re-derivation.
+
 ## Open
 
-* Nothing. The spec is settled — next phase is `tech-spec.md`.
+* Nothing. The spec is settled and the change is built.
 
 ## What the persona constrains
 
