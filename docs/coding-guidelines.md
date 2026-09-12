@@ -134,6 +134,29 @@ it with no config edit.
 *lint-enforced* (zone 3) — it encodes the removability standard in
 [architecture.md](architecture.md).
 
+**No `className` appears anywhere under `src/features/`.** Styling lives in
+`src/components/`; a feature composes those primitives and holds composition,
+state and domain. When a feature needs a look the design system does not have,
+add the variant there and select it with a prop — do not reach for a utility
+class in the feature file. Layout counts: the page frame and the gaps between
+things are `layout/` primitives taking the `Space` scale from `tokens.ts`, not
+a `gap-*` on a feature `<div>`.
+
+**The rule binds `src/features/` and stops there.** `src/app/layout.tsx` keeps
+its `<html>` and `<body>` classes: `next/font` must put its CSS-variable classes
+on `<html>`, and a document shell is not a component you compose. That is the
+whole exception, and it is expressed as a path rather than an allowlist.
+
+**It is an AST rule on the attribute, not a string scan.** Matching the
+`className` JSX attribute catches `className={dotClass(a, b)}` — which a text
+search for `className="` would miss — while leaving `element.className` in a
+test alone, which is a DOM read and not styling.
+
+*lint-enforced* (`metronome/no-styling-in-features` in `eslint.config.mjs`),
+with `eslint.config.test.ts` proving it fires — see
+[The design system](#the-design-system) for which group a lifted primitive
+belongs to.
+
 **Put a `lib/` module in the concern folder that matches what it computes.**
 `lib/` holds business logic only. Name the concern folders after what this app
 actually does rather than after a generic layer cake — for a metronome that is
@@ -443,10 +466,12 @@ eventually guarded it was one folder's worth of its fan-in — the door rule und
 
 ## Enforcement
 
-The lint-enforced rules above are `import/no-restricted-paths` in
-`eslint.config.mjs`, in one named block, configured as an **error**.
+`eslint.config.mjs` carries two named blocks, both configured as an **error**:
+`metronome/import-boundaries`, which is `import/no-restricted-paths` and does
+most of the work below, and `metronome/no-styling-in-features`, which is
+`no-restricted-syntax` over `src/features/**/*.tsx`.
 
-**A boundary is a fact about a path**, so the block is scoped to nothing:
+**A boundary is a fact about a path**, so the import block is scoped to nothing:
 `src/components/` importing `src/features/` is wrong wherever it is written,
 test file included.
 
@@ -542,6 +567,17 @@ test, the guard is a structural test that reads the file from disk and matches
 **Every zone carries a `message` that names the rule and the reason**, not just
 the restricted path, because a lint error is where most people meet these rules
 first.
+
+### The styling block
+
+`metronome/no-styling-in-features` is the one block that carries a `files` key,
+and the key *is* the rule: `src/features/**/*.tsx` and nothing else, so
+`src/app/layout.tsx` keeps the classes `next/font` needs on `<html>`. Its
+selector is `JSXAttribute[name.name='className']`, so it matches the attribute
+rather than the text — a computed class list is caught, and a `.ts` file cannot
+trip it because there is no JSX in one. Like the zones, it is proven in
+`eslint.config.test.ts` rather than believed: a fixture that violates it cannot
+be committed, so the Node API is the only place it is watched to reject one.
 
 ### The composer's rule is not a zone
 

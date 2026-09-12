@@ -30,6 +30,25 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // metronome/no-styling-in-features — the rule binds src/features/ and stops
+  // there, so this block does carry a `files` key: src/app/layout.tsx is a
+  // document shell, not a component you compose.
+  {
+    name: 'metronome/no-styling-in-features',
+    files: ['src/features/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXAttribute[name.name='className']",
+          message:
+            'Styling lives in src/components/. Compose a design-system component, ' +
+            'or add the variant there and select it with a prop.',
+        },
+      ],
+    },
+  },
+
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'specs/**']),
 ])
 

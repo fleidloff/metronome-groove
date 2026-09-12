@@ -74,6 +74,7 @@ export function Dot(props: {
 export function List(props: {
   label: string                      // -> aria-label
   gap?: Space
+  gapWide?: Space                    // -> sm: breakpoint
   children: ReactNode
 }): ReactElement
 // <ol>
@@ -105,9 +106,16 @@ growth rather than granted up front. `Eyebrow` is the one exception, and it
 takes `level` rather than an element, because a heading *level* genuinely varies
 between pages where the element does not.
 
-`tokens.ts` gains no new type. `Space` already exists, is closed, and is what
-every layout primitive takes for its gap — V5 is the change that finally gives
-it a consumer.
+`tokens.ts` keeps its one type and **widens it to
+`0 | 1 | 2 | 3 | 4 | 6 | 8 | 10 | 12`**. The scale as first written could not
+express two gaps already on screen — `gap-12` on the page frame, `sm:gap-10` on
+the dot row — and a scale that cannot say what the app renders is not the app's
+vocabulary. `tokens.test.ts` moves with it: it asserts the exact union and a
+length, both of which change. V5 is the change that finally gives `Space` a
+consumer.
+
+The lead owns `tokens.ts` and `tokens.test.ts` as part of the contracts, so no
+track lists them.
 
 ### What each file becomes
 
@@ -212,4 +220,5 @@ and a rewired feature with no primitives does not build.
 | The extraction changes the rendering, and no test notices | Every existing `Metronome.test.tsx` case survives the move unrewritten, except the two class assertions the spec decided to split. A diff of the two class lists per element is the cheap check |
 | `structure.test.ts` fails on a stray `index.ts` | It already asserts no barrels and no `../` climbs. The primitives import siblings relatively and cross groups through `@/components/…` |
 | The lint block's `files` glob also catches `.ts` test helpers | Scoped to `**/*.tsx`, and the selector is a JSX attribute, so a `.ts` file cannot trip it |
+| A gap renders no CSS because Tailwind never saw the class | Tailwind v4 extracts literal strings from source, so `` `gap-${gap}` `` produces nothing. Every `Space` mapping is an explicit record of literal class names, and the layout tests assert the rendered class rather than the prop |
 | The guard passes because the resolver silently failed | `eslint.config.test.ts` gets a case for this block, the way it already has one for the zones |

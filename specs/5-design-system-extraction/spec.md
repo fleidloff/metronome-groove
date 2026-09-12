@@ -1,7 +1,7 @@
 # V5. Design system extraction
 
 Started 2026-09-12 · `/vibe-with-docs`
-**Phase:** ready to build — `/implement-vibe-with-docs 5`
+**Phase:** shipped 2026-09-12
 
 ## What
 
@@ -56,13 +56,13 @@ Started 2026-09-12 · `/vibe-with-docs`
   needs a prefix allowlist a reviewer has to maintain, and every new Tailwind
   utility becomes a judgement call. This version is one rule a linter can state,
   and it gives `tokens.ts` its first consumer.
-* **The dots split into `display/Dot` and `layout/Row`** — two small
+* **The dots split into `display/Dot` and `layout/List`** — two small
   primitives composed by a `BeatRow` that holds the domain and no `className`.
   Chosen over one `DotRow` for the smaller, more reusable pieces, and it accepts
-  a contract between the two: `Row` renders the `<ol>` and `Dot` the `<li>`, so
-  a `Dot` outside a `Row` is invalid markup. The tech spec has to say how that
-  pairing is held — the tests select on `listitem`, so nothing catches it by
-  accident.
+  a contract between the two: one renders the `<ol>` and `Dot` the `<li>`, so a
+  `Dot` outside it is invalid markup. The tech spec settled how that pairing is
+  held — the arranging primitive is called `List`, not `Row`, so the pairing
+  reads in the two names.
 * **Assertions split by subject** — `src/components/` tests assert the classes
   (the `hero` button really is full-width and huge; the emphasised dot really
   differs in more than colour), and the feature test still renders the composed
@@ -77,6 +77,28 @@ Started 2026-09-12 · `/vibe-with-docs`
   classes and the guidelines name it as the document shell: next/font must put
   its CSS-variable classes on `<html>`, and `<html>`/`<body>` cannot be a
   component you compose, so any wider phrasing would carry a carve-out anyway.
+* **`Space` widens to carry 10 and 12** — decided mid-build, when the contract
+  met the real class lists. The scale as written could not express two gaps the
+  app already renders: `gap-12` on the page frame and `sm:gap-10` on the dot
+  row. `List` takes an explicit `gapWide`, so the responsive widening is the
+  caller's decision rather than a bump baked into every future list. Chosen over
+  dropping the bump, which would have moved the dots from 2.5rem to 1.5rem on a
+  wide screen and needed a waiver against Done-when 3. `tokens.test.ts` changes
+  with it — the union and its length are what that test asserts.
+* **The build continues against the moved tree rather than re-speccing** —
+  decided mid-build. The extraction's shape did not change: same folders, same
+  four tracks, same five `## Done when` bullets, one `git revert` still rolls it
+  back. `TapTempoButton` is not a ninth primitive; it is the concrete class list
+  for the `normal` case `ButtonEmphasis` already declared and never had to
+  define. Track C's brief widens to cover the two new files.
+* **`gap-5` becomes `gap-4`, and this is the one rendering change V5 makes** —
+  a waiver against Done-when 3, given deliberately. The two-button wrapper
+  tightens by 0.25rem: 4px, on one element, between the play button and the tap
+  button. Taken over adding `5` to `Space`, because `tokens.test.ts` uses 5 as
+  its worked example of a value the closed scale rejects — *"5 is not on the
+  scale, and that is the whole point"* — so admitting it would cost that test
+  its point and the scale its opinion. Taken over `gap-6` as the smaller move of
+  the two.
 * **The rule is new, even though the change is framed as enforcement** — the
   design-system rules exist (five role groups, generic naming, zone 1,
   `structure.test.ts`), but nothing in `docs/coding-guidelines.md` said styling
@@ -84,19 +106,32 @@ Started 2026-09-12 · `/vibe-with-docs`
   hits, none of them this rule. So V5 writes the rule as well as enforcing it,
   and the guidelines change is part of the work rather than a footnote.
 
-## Open
+## What the build found
 
-* **Does the rule bind `src/app/` as well?** — `layout.tsx` carries
-  `h-full antialiased` on `<html>` and `flex min-h-full flex-col` on `<body>`.
-  Options: (A) the rule binds `src/features/` only, and the document shell is
-  named as what it is — *recommended*, next/font has to put its variables on
-  `<html>` and a document shell is not a component; (B) it binds `src/app/`
-  too, and the body shell becomes a layout primitive; (C) it binds everything
-  outside `src/components/`, with `layout.tsx` as a written exception.
+**The tree moved between the spec and the build.** V5 was specced against
+commit `272c770`; `26a42da add tap tempo` and `8a5a410 play / stop with bt
+buttons` landed after it. The extraction is the same shape and the size test
+still passes all four questions, but it is larger than *The starting state*
+below describes:
+
+* **A ninth `className`** — `TapTempoButton.tsx`, a second button with a
+  different treatment: `rounded-card border border-muted/30 px-8 py-4 text-xl
+  font-medium`. It is not a new primitive. It is what `ButtonEmphasis`'s
+  `normal` case was always going to be, and the contract simply never had to
+  define it until now.
+* **A `gap-5` wrapper** in `Metronome.tsx`, holding the two buttons. `5` is the
+  one number `tokens.test.ts` names as deliberately *off* the scale — *"5 is not
+  on the scale, and that is the whole point."*
+* **`Metronome.test.tsx` is 619 lines**, not the ~170 Track C was scoped
+  against. Three of its lines touch `className`.
+* `hooks/useRemoteControl.ts` is new and carries no styling, so it is not in
+  scope.
 
 ## The starting state
 
-What exists today, so a later reader can see what moved.
+What exists today, so a later reader can see what moved. **Written at spec time,
+against `272c770`** — see *What the build found* above for what has changed
+since.
 
 | File | What it holds | Where it is heading |
 | :-- | :-- | :-- |

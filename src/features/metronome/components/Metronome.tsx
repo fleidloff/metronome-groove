@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { PageFrame } from '@/components/layout/PageFrame'
+import { Stack } from '@/components/layout/Stack'
+import { Eyebrow } from '@/components/typography/Eyebrow'
 import { app } from '@/lib/snippets'
 import { useClickTransport } from '../hooks/useClickTransport'
 import { useRemoteControl } from '../hooks/useRemoteControl'
@@ -157,16 +160,14 @@ export function Metronome({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-between gap-12 px-6 py-12">
-      <h1 className="text-sm font-medium uppercase tracking-[0.3em] text-muted">
-        {app.name}
-      </h1>
+    <PageFrame>
+      <Eyebrow>{app.name}</Eyebrow>
       <BeatRow current={beat} />
       <TempoControl bpm={bpm} onChange={changeTempo} />
-      <div className="flex w-full max-w-md flex-col items-center gap-5">
+      <Stack gap={4}>
         <StartStopButton running={running} onToggle={toggle} />
         <TapTempoButton onTap={tap} />
-      </div>
-    </main>
+      </Stack>
+    </PageFrame>
   )
 }

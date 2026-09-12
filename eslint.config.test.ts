@@ -4,10 +4,15 @@ import { asRule, buildZones } from './eslint.zones.mjs'
 
 const eslint = new ESLint({ cwd: process.cwd() })
 const ZONE_RULE = 'import/no-restricted-paths'
+const STYLING_RULE = 'no-restricted-syntax'
+
+async function messagesFor(filePath: string, code: string, ruleId: string) {
+  const [result] = await eslint.lintText(code, { filePath })
+  return result.messages.filter((message) => message.ruleId === ruleId)
+}
 
 async function errorsFor(filePath: string, code: string) {
-  const [result] = await eslint.lintText(code, { filePath })
-  return result.messages.filter((message) => message.ruleId === ZONE_RULE)
+  return messagesFor(filePath, code, ZONE_RULE)
 }
 
 /**
@@ -130,5 +135,45 @@ describe('the zones a grown tree would generate', () => {
       )
       expect(zone).not.toHaveProperty('zone')
     }
+  })
+})
+
+/**
+ * The styling guard, driven the same way and for the same reason: a fixture
+ * with a `className` in a feature file cannot be committed, so this is the only
+ * place the block is ever seen to reject one.
+ */
+describe('metronome/no-styling-in-features', () => {
+  const markup = (attribute: string) =>
+    `export function Widget() {\n  return <div ${attribute}>tick</div>\n}\n`
+
+  const literal = markup('className="flex gap-4"')
+  const computed = markup('className={dotClass(true, false)}')
+  const plain = markup('data-emphasis="hero"')
+
+  const inFeature = 'src/features/metronome/components/Widget.tsx'
+  const inDesignSystem = 'src/components/layout/Widget.tsx'
+
+  it('fires on a className in a feature file', async () => {
+    expect(await messagesFor(inFeature, literal, STYLING_RULE)).not.toEqual([])
+  })
+
+  it('fires on a computed className, which reads no differently to the attribute', async () => {
+    expect(await messagesFor(inFeature, computed, STYLING_RULE)).not.toEqual([])
+  })
+
+  it('stays quiet on a feature file that composes without styling', async () => {
+    expect(await messagesFor(inFeature, plain, STYLING_RULE)).toEqual([])
+  })
+
+  it('leaves the same markup in the design system alone', async () => {
+    expect(await messagesFor(inDesignSystem, literal, STYLING_RULE)).toEqual([])
+  })
+
+  it('tells the reader what to do instead', async () => {
+    const [message] = await messagesFor(inFeature, literal, STYLING_RULE)
+
+    expect(message.message).toContain('src/components/')
+    expect(message.message).toMatch(/Compose/)
   })
 })

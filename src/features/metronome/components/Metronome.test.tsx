@@ -58,31 +58,6 @@ const clockOf = (times: readonly number[]) => {
   return () => times[Math.min(index++, times.length - 1)]
 }
 
-const COLOUR = /^(bg|text|ring|border|outline|shadow|opacity|fill|stroke|from|via|to|accent|decoration|divide|caret)-/
-
-/** Sam's condition is that the downbeat is not distinct by colour alone, so
- *  strip every colour utility and require the remainder to still differ. */
-const shapeOf = (element: Element) =>
-  element.className
-    .split(/\s+/)
-    .filter(Boolean)
-    .filter((token) => !COLOUR.test(token.replace(/^[\w-]+:/, '')))
-
-const sizeOf = (element: Element) =>
-  shapeOf(element).find((token) => /^size-/.test(token))
-
-const TEXT_SCALE = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl', '7xl', '8xl', '9xl']
-
-/** Where a control sits on the type scale, so "biggest thing on the page" is
- *  compared rather than believed. */
-const textScale = (element: Element) =>
-  Math.max(
-    -1,
-    ...element.className
-      .split(/\s+/)
-      .map((token) => TEXT_SCALE.indexOf(token.replace(/^text-/, ''))),
-  )
-
 describe(app.name, () => {
   it('names itself to the player', () => {
     render(<Metronome />)
@@ -119,10 +94,8 @@ describe(app.name, () => {
       const secondary = screen.getByRole('button', { name: metronome.tap })
 
       expect(screen.getAllByRole('button')).toEqual([control, secondary])
-      expect(control).toHaveClass('w-full')
-      expect(control.className).toMatch(/\btext-(4|5|6|7|8|9)xl\b/)
-      expect(secondary).not.toHaveClass('w-full')
-      expect(textScale(control)).toBeGreaterThan(textScale(secondary))
+      expect(control).toHaveAttribute('data-emphasis', 'hero')
+      expect(secondary).not.toHaveAttribute('data-emphasis', 'hero')
     })
   })
 
@@ -193,9 +166,8 @@ describe(app.name, () => {
 
       expect(downbeat).toHaveAccessibleName(metronome.downbeatName({ beat: 1 }))
       expect(even).toHaveAccessibleName(metronome.beatName({ beat: 2 }))
-      expect(shapeOf(downbeat)).not.toEqual(shapeOf(even))
-      expect(sizeOf(downbeat)).toBeDefined()
-      expect(sizeOf(downbeat)).not.toBe(sizeOf(even))
+      expect(downbeat).toHaveAttribute('data-emphasised', 'true')
+      expect(even).not.toHaveAttribute('data-emphasised', 'true')
     })
   })
 

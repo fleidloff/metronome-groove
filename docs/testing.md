@@ -47,6 +47,15 @@ by Vitest. `src/components/tokens.test.ts` pins the closed `Space` scale with a
 while failing the build. Know which command holds a given guard before trusting
 a green run, and say so in the test when it is not the obvious one.
 
+**The styling boundary is held by `npm run lint` alone.**
+[ADR 0005](adr/0005-styling-lives-in-the-design-system.md) bans `className`
+under `src/features/`, and `eslint.config.test.ts` lints *fixture strings* — so
+it proves the rule block is configured and fails if the block is deleted, but it
+never reads `src/features/` from disk. A `className` reintroduced into a real
+feature file passes all 214 tests and is caught only by lint. A CI path running
+`npm test` without `npm run lint` does not carry that rule. This was a
+deliberate choice over a disk-reading structural test, and the ADR says why.
+
 ## Changing a word must never fail a test
 
 Rewording anything the user is shown is one edit in `src/lib/snippets/en/`, and
@@ -116,7 +125,7 @@ the source from disk and fail when it drifts. They run under `npm test`, not
 | `src/components/structure.test.ts` | the five design-system groups, `tokens.ts` at the root, no barrels, no import climbing out of its folder |
 | `src/app/route-boundary.test.ts` | a route reaches a feature only through its `index.ts` — including `vi.mock`, dynamic `import()` and `require()`, which lint cannot see |
 | `src/app/theme.test.ts` | every custom property `@theme` reaches for is declared somewhere, and the body is dressed in the theme |
-| `eslint.config.test.ts` | each live lint zone fires on a bad import and stays quiet on a good one |
+| `eslint.config.test.ts` | each live lint zone fires on a bad import and stays quiet on a good one, and the styling block rejects a `className` in a feature while leaving one under `src/components/` alone — against fixture strings, never the real tree |
 | `src/lib/snippets/snippets.test.ts` | the language folder is private to the index, and **no test anywhere writes out what a snippet says** |
 
 The guidelines say which rule each one stands behind, and which rules
