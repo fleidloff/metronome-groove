@@ -440,24 +440,56 @@ describe('every velocity renders at the level the table states', () => {
 describe('the figure docs/music.md §2 publishes', () => {
   const doc = readFileSync(join(process.cwd(), 'docs/music.md'), 'utf8')
 
-  const written = (voice: VoiceName, velocity: number) =>
+  const hatLine = `hatClosed  all ${STEPS_PER_BAR} steps`
+
+  /**
+   * Only this groove's fenced block, found by its own hat line rather than by
+   * its heading — the heading is the word the select box shows, and
+   * `snippets.test.ts` forbids a test writing that out. Scoping matters for a
+   * second reason: a bare step list like "10" occurs all over the document, so
+   * an unscoped substring match would pass whatever the block actually said.
+   */
+  const block = (() => {
+    const at = doc.indexOf(hatLine)
+    const opens = doc.lastIndexOf('```', at)
+    const closes = doc.indexOf('```', at)
+
+    return at === -1 ? '' : doc.slice(opens, closes)
+  })()
+
+  const stepsOf = (voice: VoiceName, velocity?: number) =>
     SECOND_LINE.ordinary[0]
-      .filter((line) => line.voice === voice && line.velocity === velocity)
+      .filter(
+        (line) => line.voice === voice && (velocity === undefined || line.velocity === velocity),
+      )
       .flatMap((line) => [...line.steps])
       .sort((a, b) => a - b)
       .join(' ')
 
+  const publishes = (voice: string, steps: string) =>
+    new RegExp(`^${voice}\\s+${steps.replace(/ /gu, '\\s')}\\s`, 'mu').test(block)
+
+  it('is a fenced block, found by the hat line the definition dictates', () => {
+    expect(block).toContain(hatLine)
+    expect(block.startsWith('```')).toBe(true)
+  })
+
   it.each([
-    ['kick', 0.95 as const],
-    ['kick', 0.86 as const],
-    ['snare', 0.86 as const],
-    ['snare', 0.7 as const],
-    ['snare', SECOND_LINE_TAP],
-  ] as const)('publishes %s at %f on the steps the definition names', (voice, velocity) => {
-    const steps = written(voice, velocity)
+    ['the displaced backbeat', 0.86 as const],
+    ['the and of 3', 0.7 as const],
+    ['the taps', SECOND_LINE_TAP],
+  ])('publishes %s on the snare steps the definition names', (_reads, velocity) => {
+    const steps = stepsOf('snare', velocity as number)
 
     expect(steps).not.toBe('')
-    expect(doc).toContain(steps)
+    expect(publishes('snare', steps), `snare ${steps} is not a line of the block`).toBe(true)
+  })
+
+  it('publishes the kick as one line over every step it plays', () => {
+    const steps = stepsOf('kick')
+
+    expect(steps).toBe('0 6 12')
+    expect(publishes('kick', steps), `kick ${steps} is not a line of the block`).toBe(true)
   })
 
   it('publishes the hat as stating every step, which is why subdivision is 16', () => {
@@ -466,6 +498,86 @@ describe('the figure docs/music.md §2 publishes', () => {
       .flatMap((line) => [...line.steps])
 
     expect(new Set(hat).size).toBe(STEPS_PER_BAR)
-    expect(doc).toContain(`hatClosed  all ${STEPS_PER_BAR} steps`)
+  })
+})
+
+
+/**
+ * Compensation 3, restated as the function it performs after the fill was
+ * measured against it. The spec said "near-silence on 15" and that was true of
+ * three bars in four: the fill's step 15 carries the tap like every other odd
+ * step of its roll. What Sam actually gets in every bar is the loudest snare of
+ * the bar on 14 and a drop of at least 14 dB into the downbeat — ten times
+ * `gainTrim`'s ±1.6 dB, so humanize cannot close it.
+ */
+describe('the run-in to the downbeat, in every bar', () => {
+  const BARS = [
+    ['bar 1 / 3, ordinary', () => barOf(SECOND_LINE.ordinary[0])],
+    ['bar 2, the light one', () => barOf(SECOND_LINE.light)],
+    ['bar 4, the fill', () => barOf(SECOND_LINE.fill)],
+  ] as const
+
+  const powerDbfs = (hits: readonly Hit[]) =>
+    10 *
+    Math.log10(
+      hits.reduce(
+        (sum, hit) => sum + 10 ** (renderedDbfs(hit.voice as KitVoiceName, hit.velocity) / 10),
+        0,
+      ),
+    )
+
+  const MINIMUM_DROP_DB = 14
+  const trimDb = DYNAMIC_RANGE_DB * SECOND_LINE.humanize.velocityJitter
+
+  it.each(BARS)('puts the loudest snare of %s on step 14', (_name, bar) => {
+    const loudest = Math.max(...velocitiesIn(bar(), 'snare'))
+
+    expect(velocitiesIn([bar()[14]], 'snare')).toEqual([loudest])
+  })
+
+  it.each(BARS)('drops at least 14 dB from step 14 into step 15 of %s', (_name, bar) => {
+    const drop = powerDbfs(bar()[14]) - powerDbfs(bar()[15])
+
+    expect(drop).toBeGreaterThanOrEqual(MINIMUM_DROP_DB)
+    expect(drop).toBeGreaterThan(2 * trimDb)
+  })
+
+  /**
+   * The light bar is not 19.06 like the ordinary one: it adds a kick on step 14
+   * under the displaced backbeat, which lifts the full mix there to −19.62 and
+   * deepens the drop rather than shallowing it. The fill is the only bar that
+   * gives up depth, and it gives up 4.42 dB.
+   */
+  it('drops 19.06, 20.54 and 14.64 dB, the fill being the only one that gives up depth', () => {
+    const dropIn = (bar: readonly (readonly Hit[])[]) =>
+      powerDbfs(bar[14]) - powerDbfs(bar[15])
+
+    expect(dropIn(barOf(SECOND_LINE.ordinary[0]))).toBeCloseTo(19.06, 2)
+    expect(dropIn(barOf(SECOND_LINE.light))).toBeCloseTo(20.54, 2)
+    expect(dropIn(barOf(SECOND_LINE.fill))).toBeCloseTo(14.64, 2)
+  })
+
+  it('keeps the kick on steps 0 and 12 in all three bars, without exception', () => {
+    for (const [, bar] of BARS) {
+      expect(velocitiesIn([bar()[0]], 'kick')).toEqual([0.95])
+      expect(velocitiesIn([bar()[12]], 'kick')).toEqual([0.86])
+    }
+  })
+
+  it.each(BARS)('makes the quarter the loudest hat event of %s', (_name, bar) => {
+    for (const step of QUARTERS) {
+      const hats = bar()[step].filter((hit) => hit.voice === 'hatClosed' || hit.voice === 'hatOpen')
+
+      expect(hats, `step ${step} states no hat`).toHaveLength(1)
+
+      const quarter = renderedDbfs(hats[0].voice as KitVoiceName, hats[0].velocity)
+      const between = bar()
+        .filter((_, other) => !QUARTERS.includes(other))
+        .flat()
+        .filter((hit) => hit.voice === 'hatClosed' || hit.voice === 'hatOpen')
+        .map((hit) => renderedDbfs(hit.voice as KitVoiceName, hit.velocity))
+
+      expect(quarter).toBeGreaterThan(Math.max(...between))
+    }
   })
 })

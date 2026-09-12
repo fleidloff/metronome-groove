@@ -230,10 +230,18 @@ kick       0 6 12              (0.95 on 0; 0.86 on the "and" of 2 and the
 ```
 
 Three things compensate for the missing backbeat in every bar, marked or not:
-the hat's quarter rung is the bar-position anchor, the kick states beats 1 and
-4, and the approach to the downbeat is a fixed two-step figure — loud snare on
-14, near-silence on 15, then the downbeat. **Beats 2 and 3 are carried by the
-hat's 0.90 rung alone**, which is the exercise and the biggest listening risk.
+the quarter is the loudest hat event of the bar, the kick states beats 1 and 4,
+and the approach to the downbeat is the loudest snare of the bar on step 14
+followed by a drop of at least 14 dB on step 15. **Beats 2 and 3 are carried by
+the hat's 0.90 rung alone**, which is the exercise and the biggest listening
+risk.
+
+**This used to say "near-silence on 15", and that was true of three bars in
+four.** Measured as full-mix power the drop is 19.06 dB in the ordinary bar,
+20.54 dB in the light one — it adds a kick on step 14, so the dip deepens — and
+14.64 dB in the fill, where step 15 carries the tap like every other odd step of
+its roll. All three are many times the ±1.6 dB `gainTrim` and all three repeat
+identically every cycle, so the cue is the dip rather than silence.
 
 **The tap is 0.45, not funk's ghost of 0.37**, and the reason is this repo's
 decibel-linear curve rather than taste: at 0.37 a tap renders 0.73 dB *below*

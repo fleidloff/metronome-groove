@@ -19,8 +19,10 @@ Started 2026-09-12 · `/vibe-with-docs`
   swing value, and a swung odd step lands late by at least 3.3 ms everywhere in
   40–180.
 * **The snare states no quarter**, and the three compensations hold in every bar
-  — the hat's three rungs, the kick on steps 0 and 12, and the fixed two-step
-  run-in to the downbeat.
+  — the quarter is the loudest hat event, the kick states steps 0 and 12, and
+  step 14 is the loudest snare followed by a drop of at least 14 dB on step 15.
+  *Needs an ear:* the fill's drop is 14.64 dB against the ordinary bar's 19.06,
+  because step 15 carries the tap.
 * **The fill adds rather than subtracts**: the hat plays all 16 steps through
   it, every ordinary snare note keeps its velocity, and the loudest note is
   capped 3.06 dB under the downbeat kick.
@@ -261,18 +263,35 @@ The snare states **no quarter at all**: its strong notes are steps 6 and 14, the
 be. The idiom is learnable as a rule rather than a shape — *the snare answers
 every beat half a beat late, and never lands on one.*
 
-Three things compensate, in every bar, marked or not:
+Three things compensate, in every bar, marked or not. Each is stated as the
+function it performs and the floor that performs it, because two of the three
+are carried by different notes in a marked bar than in an ordinary one.
 
-1. **The hat's quarter rung is the bar-position anchor** — three rungs at 0.90 /
-   0.78 / 0.66, which is 4.8 dB and 9.6 dB of separation. This is why Sam is
-   right that `subdivision` must be 16: a groove stating 8 would leave the hat's
-   ladder with nothing to be a ladder against.
+1. **The quarter is the loudest hat event of the bar** — in an ordinary bar the
+   three rungs 0.90 / 0.78 / 0.66 render −30.54 / −35.33 / −40.16, which is
+   4.79 dB and 9.62 dB of separation. In the light bar step 12's quarter is
+   `hatOpen` 0.80 at −27.47 instead, 3.07 dB *louder* than the closed rung it
+   replaces, so the anchor is strengthened there rather than moved. This is why
+   Sam is right that `subdivision` must be 16: a groove stating 8 would leave
+   the hat's ladder with nothing to be a ladder against.
 2. **The kick states the two quarters that matter most** — 0.95 on step 0 and
-   0.86 on step 12, the big four. So beats 1 and 4 are carried by two voices
-   each; **beats 2 and 3 are carried by the hat's 0.90 rung alone.** That is the
-   exercise, and it is the biggest listening risk.
-3. **The approach to the downbeat is a fixed two-step figure** — loud snare on
-   14, near-silence on 15, then the downbeat. Sam always gets the same run-in.
+   0.86 on step 12, the big four, in all three bars without exception. So beats
+   1 and 4 are carried by two voices each; **beats 2 and 3 are carried by the
+   hat's 0.90 rung alone.** That is the exercise, and it is the biggest
+   listening risk.
+3. **The approach to the downbeat is the loudest snare of the bar on step 14,
+   then a drop of at least 14 dB on step 15, then the downbeat.** Step 14 is
+   `snare` 0.86 / −21.27 in every bar. Step 15 is the hat alone at −40.16 in
+   the ordinary and light bars, and in the fill it also carries the 0.45 tap.
+   Measured as full-mix power the drop is **19.06 dB** in the ordinary bar,
+   **20.54 dB** in the light one — which adds a kick on step 14 and so deepens
+   the dip rather than shallowing it — and **14.64 dB** in the fill. All three
+   are many times `gainTrim`'s ±1.6 dB and all three repeat identically on
+   every cycle, so the cue is the dip and not the silence.
+
+**This paragraph read "near-silence on 15" until the fill was measured against
+it, and that was wrong of one bar in four.** See *Bar 4* below for why the tap
+stays.
 
 ## The three bars
 
@@ -321,6 +340,27 @@ supplies only the notes between them, closing the hinted roll into a real one.
 | `snare` | 0.62 → 0.70 → 0.78 → 0.86 | 8 → 10 → 12 → 14 |
 | `snare` | 0.45 | 9, 11, 13, 15 |
 | `hatClosed` | 0.90 / 0.78 / 0.66 | **all 16 steps, unchanged** |
+
+**Step 15 keeps the tap, and this was argued rather than inherited.** It is the
+one place the fill departs from compensation 3 as originally written. It stays
+for three reasons. The fill is the bar with the *most* downbeat information, not
+the least: the crescendo −30.89 → −27.69 → −24.49 → −21.27 on steps 8/10/12/14
+is a directional approach eight steps long, against the ordinary bar's two.
+Those rungs are 3.20 / 3.20 / 3.22 dB apart — exactly invariant 6's floor — so
+worst-case `gainTrim` can flatten them; the accent-against-tap alternation at
+16.42 dB cannot be flattened, and it is the only humanize-proof structure the
+fill has. And swing makes step 15 a pickup rather than an event of its own: at
+92 bpm the lilt puts it 146.74 ms before the downbeat against 179.34 ms after
+step 14, long–short into 1.
+
+**There is no middle value.** A snare renders −40.16 — the hat's own level — at
+velocity 0.388, so any tap quiet enough to deepen the dip meaningfully sinks
+into the hat line, which is the 0.37 case this spec already refused. The choice
+is 0.45 or nothing.
+
+*Needs an ear:* whether a 14.64 dB drop into the downbeat reads as the same
+run-in as the ordinary bar's 19.06 dB. If bar 4's downbeat proves harder to find
+than bar 1's, remove the step-15 tap outright rather than lowering it.
 
 **The hat never stops**, which is Sam's constraint 2 — and the gesture both
 shipped grooves use was not available here anyway.
