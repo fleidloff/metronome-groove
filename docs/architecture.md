@@ -48,6 +48,8 @@ draw. The direction is what makes the slices work:
   feature is on screen.
 
 The guidelines draw the full graph and name the ESLint zone behind each arrow.
+Since V1 those zones exist and are tested rather than described — see
+[ADR 0001](adr/0001-enforced-import-graph.md).
 
 ```
 src/app/         → a feature's index.ts, src/components/, src/lib/
@@ -63,7 +65,13 @@ The graph above is between directories. Inside a feature folder there is a
 second graph that the directories do not show: which of the slice's concerns may
 reach which. **This project has not drawn one yet**, and that is the honest
 state rather than an omission — a map is worth writing when a slice has grown
-enough concerns that a reader cannot hold them, and not before.
+enough concerns that a reader cannot hold them, and not before. Today
+`src/features/metronome/` holds one component and its index; there is no `lib/`
+and nothing to map.
+
+Zone 6 is nonetheless already configured for it, so the first module placed in
+`src/features/metronome/lib/` is bounded on the day it is written rather than
+the day someone notices.
 
 When it is worth writing, this is the section it goes in, and three things have
 to be true of it:

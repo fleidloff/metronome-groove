@@ -5,18 +5,20 @@ that". [architecture.md](architecture.md) keeps the principles and the reasoning
 behind the shape of the tree — read it for *why*; read this for what to type.
 [testing.md](testing.md) sets the standard for what must be tested.
 
-**A rule here names the file that motivated it.** This repo is new, so most
-rules arrive carried over from a sibling project rather than grown here, and
-they say so by naming no file yet. That is a debt, not a style: the first time a
-rule meets a real file in this tree, add the citation. A rule this project never
+**A rule here names the file that motivated it.** Most rules arrived carried
+over from a sibling project rather than grown here, and say so by naming no file
+yet. That is a debt, not a style: the first time a rule meets a real file in
+this tree, add the citation. V1 paid the first instalment — the rules with a
+`src/` or root-level path beside them are the ones that now have a subject. A rule this project never
 finds a reason for does not belong in this document — delete it rather than
 leaving it as decoration.
 
 Each rule is tagged:
 
 - *lint-enforced* — `npm run lint` fails on a violation. The rule that does most
-  of that work is `import/no-restricted-paths` in `eslint.config.mjs`, for the
-  import graph; see [Enforcement](#enforcement).
+  of that work is `import/no-restricted-paths` in `eslint.config.mjs`, built by
+  `eslint.zones.mjs`; see [Enforcement](#enforcement) and
+  [ADR 0001](adr/0001-enforced-import-graph.md).
 - *human-checked* — no linter checks it; a reviewer does. Some are additionally
   guarded by tests that read the tree from disk, but a test is not a linter, so
   the tag stays honest.
@@ -45,8 +47,8 @@ the system's shared vocabulary, not a component. Put the closed spacing scale
 there and have the layout primitives take it instead of a raw length, so a
 caller can never smuggle an arbitrary spacing decision in from outside.
 
-*human-checked* — a structural test under `src/components/` should assert the
-placement once the groups exist.
+*human-checked* — asserted by `src/components/structure.test.ts`, which reads
+the folder set from disk.
 
 **Name a design-system component for what it is, never for where it is used.**
 No name under `src/components/` carries a domain word. Write `Button`, not
@@ -74,8 +76,8 @@ import { EyebrowLabel } from '@/components/typography/EyebrowLabel'  // crossing
 import { EyebrowLabel } from '../typography/EyebrowLabel'
 ```
 
-*human-checked* — assert it with a "no import that climbs out of its own folder"
-case in the design system's structural test.
+*human-checked* — asserted by the "has no import that climbs out of its own
+folder" case in `src/components/structure.test.ts`.
 
 **No barrel files under `src/components/`.** No `index.ts` in any group and none
 at the root; import each component from its own path. A barrel lets one import
@@ -88,8 +90,8 @@ A feature's `lib/` folder is the case where the opposite holds — see
 interchangeable pieces; a concern folder is one seam with a job, and naming the
 job is what its `index.ts` is for.
 
-*human-checked* — lock it in with a "has no barrel files" case in the structural
-test.
+*human-checked* — locked in by the "has no barrel files" case in
+`src/components/structure.test.ts`.
 
 ---
 
@@ -117,7 +119,11 @@ looking like setup rather than coupling. Lint cannot see a `vi.mock`, so guard
 the routes with a structural test that reads them from disk and fails on any
 specifier — or mock path — that is not exactly `@/features/<feature>`.
 
-*lint-enforced* (zone 2), plus that structural test for the mock case.
+*lint-enforced* (zone 2), plus `src/app/route-boundary.test.ts` for the mock
+case — it reads every route file from disk and matches `from`, `vi.mock`,
+dynamic `import()` and `require()` specifiers in any quote style. That guard
+excludes exactly one file, itself, because its own fixtures are deliberate
+violations; a second exclusion fails its count assertion.
 
 **No feature may import another feature — not even through its `index.ts`.**
 Anything two slices both need moves *up* into `src/lib/` (logic) or
@@ -425,6 +431,11 @@ The lint-enforced rules above are `import/no-restricted-paths` in
 `src/components/` importing `src/features/` is wrong wherever it is written,
 test file included.
 
+**`eslint-import-resolver-typescript` is load-bearing.** Without it the `@/`
+alias does not resolve and every zone silently passes — a dependency whose
+absence looks exactly like success. `eslint.config.test.ts` is what stands
+between us and that.
+
 `basePath` is pinned to `import.meta.dirname`, so the zones resolve against the
 repo root whatever directory `eslint` runs from.
 
@@ -457,6 +468,24 @@ Numbering skips 5 deliberately: in the project these zones came from, zone 5
 held an offline generator out of the app tree. This project has no generator, so
 the zone does not exist. The gap is kept so a reader comparing the two configs
 does not have to renumber anything.
+
+**Zones are proven, not believed.** `eslint.config.test.ts` drives ESLint's Node
+API over this repo's own config on synthetic source with a virtual `filePath`,
+asserting each live zone both fires on a bad import and stays quiet on a good
+one. A fixture committed to the tree would fail `npm run lint` for everyone, so
+this is the only way a zone is ever *watched to reject* anything — and a rule
+that has only been seen to pass is a comment.
+
+**Zone 3 is the exception, and the reason is worth keeping.** Its target is the
+sibling features, so with one feature the generated zone does not exist at all
+and nothing can fire it. It is asserted at the generator instead —
+`buildZones(['metronome', 'practice'])` — which is the half a second slice
+inherits with no config edit, and the half nobody would notice was missing.
+
+**A "stays quiet" case that imports nothing proves less than it looks.** Zones 4
+and 6 are checked against a module importing nothing at all, which shows no
+spurious firing but not that a *legal* import is permitted. That is structural
+while `src/lib/` is empty; revisit it when the first module lands there.
 
 **Zones inside a slice come later.** Zone 6 is the first whose `target` and
 `from` are both inside one feature; more of them — the arrows *between* a

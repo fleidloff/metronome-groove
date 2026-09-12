@@ -20,7 +20,7 @@ in either table.
 
 | N | Title | Shipped | What landed |
 | :-- | :-- | :-- | :-- |
-| — | — | — | nothing yet |
+| [1](1-next-app-scaffold/) | Next.js app scaffold | 2026-09-12 | Next 16 / React 19 / TypeScript / Tailwind v4, Vitest + Testing Library, and the import graph turned from a description into an enforced, tested fact. One stubbed `metronome` slice reached through its `index.ts`. Produced [ADR 0001](../docs/adr/0001-enforced-import-graph.md) and [ADR 0002](../docs/adr/0002-tailwind-v4.md). |
 
 ---
 
@@ -32,7 +32,8 @@ Seeded from [docs/music.md](../docs/music.md). Nothing here is decided.
 
 | Candidate | Why | Notes |
 | :-- | :-- | :-- |
-| Walking skeleton — Next.js app + synthesized click | Everything hangs off an accurate scheduler; it is the part never thrown away | Audio-clock scheduling, start/stop, a tempo. No samples, so no licence obligation yet |
+| ~~Next.js app scaffold~~ | — | Shipped as V1 |
+| Synthesized click — start, stop, hold a tempo | Everything hangs off an accurate scheduler; it is the part never thrown away | Audio-clock scheduling with an injected clock, so drift is measurable rather than felt. No samples, so no licence obligation yet. The first module in `src/features/metronome/lib/` — zone 6 is already waiting for it |
 | Tempo control | A metronome's one required input | music.md Q2 — continuous or a ladder — decides whether anything can be pre-rendered |
 | Time signature / meter | Four of the thirteen grooves need it | music.md Q5. Building 4/4-only is cheaper and forecloses waltz, 6/8 and odd meters |
 | Accent scheme | Beat 1 against the rest is the minimum useful structure | `cowbell` on 1, `claves` on 2–4 is music.md's first try |

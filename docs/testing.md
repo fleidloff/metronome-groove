@@ -39,12 +39,29 @@ about drift.
 **An assertion nothing but an ear can settle is stated as such**, in the spec
 and in the report, rather than dressed up as a passing test.
 
+## Not every assertion runs under `npm test`
+
+A type-level assertion is checked by `tsc`, which runs in `npm run build` — not
+by Vitest. `src/components/tokens.test.ts` pins the closed `Space` scale with a
+`@ts-expect-error`, and widening the type to `number` passes all of `npm test`
+while failing the build. Know which command holds a given guard before trusting
+a green run, and say so in the test when it is not the obvious one.
+
 ## Structural tests
 
 Some conventions no linter can check are guarded by tests that read the tree or
 the source from disk and fail when it drifts. They run under `npm test`, not
-`npm run lint`. The guidelines say which rule each one stands behind, and which
-rules `npm run lint` enforces instead.
+`npm run lint`. Today:
+
+| Test | Guards |
+| :-- | :-- |
+| `src/components/structure.test.ts` | the five design-system groups, `tokens.ts` at the root, no barrels, no import climbing out of its folder |
+| `src/app/route-boundary.test.ts` | a route reaches a feature only through its `index.ts` — including `vi.mock`, dynamic `import()` and `require()`, which lint cannot see |
+| `src/app/theme.test.ts` | every custom property `@theme` reaches for is declared somewhere, and the body is dressed in the theme |
+| `eslint.config.test.ts` | each live lint zone fires on a bad import and stays quiet on a good one |
+
+The guidelines say which rule each one stands behind, and which rules
+`npm run lint` enforces instead.
 
 Write one when a convention is a fact about the tree — a folder set, a public
 surface, a file that may not import something a linter cannot see, such as a
