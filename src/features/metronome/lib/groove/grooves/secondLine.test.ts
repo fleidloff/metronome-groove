@@ -11,7 +11,8 @@ import { ROCK } from './rock'
 import * as secondLine from './secondLine'
 import { SECOND_LINE, SECOND_LINE_SWING, SECOND_LINE_TAP } from './secondLine'
 import { SHUFFLE } from './shuffle'
-import { GHOST_VELOCITY, STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+import { KIT_HUMANIZE } from './shared'
+import { GHOST_VELOCITY, STRAIGHT_FUNK } from './straightFunk'
 
 const renderedDbfs = (voice: KitVoiceName, velocity: number) => {
   const layer = layerFor(voice, velocity)
@@ -171,7 +172,7 @@ describe('second line, as a definition', () => {
   })
 
   it('shares the funk humanize record, exact voices and all', () => {
-    expect(SECOND_LINE.humanize).toBe(STRAIGHT_FUNK_HUMANIZE)
+    expect(SECOND_LINE.humanize).toBe(KIT_HUMANIZE)
     expect(SECOND_LINE.humanize.exactVoices).toEqual([])
   })
 
@@ -353,7 +354,7 @@ describe('the six invariants, which ADR 0010 needs no amendment to keep', () => 
     )
     const imports = [...source.matchAll(/from '([^']+)'/g)].map(([, path]) => path)
 
-    expect([...new Set(imports)].sort()).toEqual(['./definition', './straightFunk', '@/lib/steps'])
+    expect([...new Set(imports)].sort()).toEqual(['./definition', './shared', '@/lib/steps'])
     expect([...Object.keys(secondLine)].sort()).toEqual([
       'SECOND_LINE',
       'SECOND_LINE_SWING',

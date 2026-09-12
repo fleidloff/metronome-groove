@@ -1,18 +1,11 @@
 /** specs/6-straight-funk-groove */
 
 import { STEPS_PER_BAR } from '@/lib/steps'
-import type { Humanize } from '../../transport/source'
 import type { GrooveDefinition, Line } from './definition'
+import { KIT_HUMANIZE } from './shared'
 
 /** `specs/6-straight-funk-groove/tech-spec.md` § Why the pack’s numbers cannot be copied */
 export const GHOST_VELOCITY = 0.37
-
-export const STRAIGHT_FUNK_HUMANIZE: Humanize = {
-  timingFractionOfStep: 0.03,
-  timingCeilingMs: 4,
-  velocityJitter: 0.04,
-  exactVoices: [],
-}
 
 export const STRAIGHT_FUNK_SWING = 0
 
@@ -65,7 +58,7 @@ export const STRAIGHT_FUNK: GrooveDefinition = {
   subdivision: STEPS_PER_BAR,
   seed: STRAIGHT_FUNK_SEED,
   swing: STRAIGHT_FUNK_SWING,
-  humanize: STRAIGHT_FUNK_HUMANIZE,
+  humanize: KIT_HUMANIZE,
   ordinary: [ORDINARY],
   voices: ['kick', 'snare', 'hatClosed', 'hatOpen'],
   light: LIGHT,

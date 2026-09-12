@@ -6,11 +6,8 @@ import { BOSSA_NOVA } from './grooves/bossaNova'
 import type { GrooveDefinition } from './grooves/definition'
 import { ROCK } from './grooves/rock'
 import { SHUFFLE } from './grooves/shuffle'
-import {
-  STRAIGHT_FUNK,
-  STRAIGHT_FUNK_HUMANIZE,
-  STRAIGHT_FUNK_SEED,
-} from './grooves/straightFunk'
+import { KIT_HUMANIZE } from './grooves/shared'
+import { STRAIGHT_FUNK, STRAIGHT_FUNK_SEED } from './grooves/straightFunk'
 import { timingBound, timingOffset } from './humanize'
 import type { KitVoiceName } from './kit'
 import { sampleUrlFor } from './kit'
@@ -54,7 +51,7 @@ describe('the groove source, over straight funk', () => {
   it('is humanized, which is what separates it from the click', () => {
     const source = createGrooveSource(STRAIGHT_FUNK)
 
-    expect(source.humanize).toBe(STRAIGHT_FUNK_HUMANIZE)
+    expect(source.humanize).toBe(KIT_HUMANIZE)
     expect(source.displace).toBeDefined()
     expect(source.trim).toBeDefined()
   })
@@ -93,7 +90,7 @@ describe('the groove source, over straight funk', () => {
 
   it('displaces every hit inside the bound, over a thousand bars', () => {
     const source = createGrooveSource(STRAIGHT_FUNK)
-    const bound = timingBound(STRAIGHT_FUNK_HUMANIZE, SECONDS_PER_STEP)
+    const bound = timingBound(KIT_HUMANIZE, SECONDS_PER_STEP)
 
     for (let step = 0; step < STEPS_PER_BAR * 1000; step += 1) {
       for (const hit of source.hitsAt(step)) {
@@ -298,7 +295,7 @@ describe('an exact voice under a swung groove', () => {
   const EXACT_HAT: GrooveDefinition = {
     ...STRAIGHT_FUNK,
     swing: LILT,
-    humanize: { ...STRAIGHT_FUNK_HUMANIZE, exactVoices: ['hatClosed'] },
+    humanize: { ...KIT_HUMANIZE, exactVoices: ['hatClosed'] },
   }
 
   const HAT: Hit = { voice: 'hatClosed', velocity: 0.66 }
@@ -307,7 +304,7 @@ describe('an exact voice under a swung groove', () => {
   const jitteredTwin = () =>
     createGrooveSource({
       ...EXACT_HAT,
-      humanize: { ...STRAIGHT_FUNK_HUMANIZE, exactVoices: [] },
+      humanize: { ...KIT_HUMANIZE, exactVoices: [] },
     })
 
   it('still swings that voice, because swing is where the grid is', () => {

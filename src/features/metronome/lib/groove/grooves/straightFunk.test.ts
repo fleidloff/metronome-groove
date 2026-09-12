@@ -5,7 +5,8 @@ import type { Hit, VoiceName } from '../../transport/source'
 import { BARS_PER_CYCLE, FILL_BAR, LIGHT_BAR, hitsAt } from '../cycle'
 import { sixInvariantViolations } from '../invariants'
 import { type KitVoiceName, layerFor } from '../kit'
-import { GHOST_VELOCITY, STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+import { KIT_HUMANIZE } from './shared'
+import { GHOST_VELOCITY, STRAIGHT_FUNK } from './straightFunk'
 
 const STRAIGHT_FUNK_STEPS = STRAIGHT_FUNK.steps
 
@@ -300,7 +301,7 @@ describe('step 15 across the cycle, the spine of the design', () => {
     ).toEqual(Array.from({ length: BARS_PER_CYCLE - 2 }, () => GHOST_VELOCITY))
     expect(new Set(spine).size).toBe(3)
 
-    const jitterDb = DYNAMIC_RANGE_DB * STRAIGHT_FUNK_HUMANIZE.velocityJitter
+    const jitterDb = DYNAMIC_RANGE_DB * KIT_HUMANIZE.velocityJitter
 
     for (const [low, high] of [
       [spine[0], spine[LIGHT_BAR]],
@@ -328,7 +329,7 @@ describe("the six invariants, in every bar of the cycle", () => {
   })
 
   it('6. designs its contours a full ladder step apart, which here is 3.2 dB', () => {
-    const worstCaseJitterDb = 2 * DYNAMIC_RANGE_DB * STRAIGHT_FUNK_HUMANIZE.velocityJitter
+    const worstCaseJitterDb = 2 * DYNAMIC_RANGE_DB * KIT_HUMANIZE.velocityJitter
 
     expect(worstCaseJitterDb).toBeCloseTo(3.2, 5)
 
@@ -348,7 +349,7 @@ describe("the fill's ladder against the kit's velocity layers", () => {
 
     const rise = renderedDbfs('snare', 0.86) - renderedDbfs('snare', 0.78)
 
-    expect(rise).toBeCloseTo(2 * DYNAMIC_RANGE_DB * STRAIGHT_FUNK_HUMANIZE.velocityJitter, 1)
+    expect(rise).toBeCloseTo(2 * DYNAMIC_RANGE_DB * KIT_HUMANIZE.velocityJitter, 1)
   })
 
   it('renders step 15 above an ordinary backbeat', () => {

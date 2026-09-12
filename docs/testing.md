@@ -128,6 +128,7 @@ the source from disk and fail when it drifts. They run under `npm test`, not
 | `eslint.config.test.ts` | each live lint zone fires on a bad import and stays quiet on a good one, and the styling block rejects a `className` in a feature while leaving one under `src/components/` alone — against fixture strings, never the real tree |
 | `src/lib/snippets/snippets.test.ts` | the language folder is private to the index, and **no test anywhere writes out what a snippet says** |
 | `docs.test.ts` | every record in `docs/adr/` has a row in `adrs.md` with a status, and the numbers run without a gap or a repeat |
+| `src/features/metronome/lib/groove/grooves/structure.test.ts` | every groove file imports the shape, the shared humanize record and the step grid — and never another groove |
 
 The guidelines say which rule each one stands behind, and which rules
 `npm run lint` enforces instead.

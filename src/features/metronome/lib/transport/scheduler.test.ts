@@ -7,7 +7,8 @@ import { createScheduler } from './scheduler'
 import { MIN_BPM } from './tempo'
 import { createGrooveSource } from '../groove/source'
 import { hitsAt } from '../groove/cycle'
-import { STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from '../groove/grooves/straightFunk'
+import { KIT_HUMANIZE } from '../groove/grooves/shared'
+import { STRAIGHT_FUNK } from '../groove/grooves/straightFunk'
 
 const CLAVES_LEAD_IN_S = 0.0083
 const ACCENT_VELOCITY: Velocity = 0.65
@@ -651,7 +652,7 @@ describe('the click scheduler', () => {
   it('plays the real straight funk source through the real scheduler', () => {
     for (const bpm of [40, 100, 180]) {
     const seconds = stepSeconds(bpm, STEPS_PER_BAR)
-    const bound = humanizeBoundS(STRAIGHT_FUNK_HUMANIZE, seconds)
+    const bound = humanizeBoundS(KIT_HUMANIZE, seconds)
 
     const fake = testClock(0, {})
     const scheduler = createScheduler({

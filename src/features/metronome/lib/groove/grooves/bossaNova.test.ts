@@ -12,7 +12,7 @@ import { KIT_VOICES, type KitVoiceName, layerFor } from '../kit'
 import * as bossaNova from './bossaNova'
 import { BOSSA_NOVA } from './bossaNova'
 import type { Line } from './definition'
-import { STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+import { KIT_HUMANIZE } from './shared'
 
 // Unsorted: `VOICE_ORDER` does not name the clave, so sorting would bake that omission in.
 const barOf = (lines: readonly Line[]): readonly (readonly Hit[])[] =>
@@ -143,9 +143,9 @@ describe('bossa nova, as a definition', () => {
   it('shares funk three timing numbers but exempts the clave from displacement', () => {
     const { timingFractionOfStep, timingCeilingMs, velocityJitter } = BOSSA_NOVA.humanize
 
-    expect(timingFractionOfStep).toBe(STRAIGHT_FUNK_HUMANIZE.timingFractionOfStep)
-    expect(timingCeilingMs).toBe(STRAIGHT_FUNK_HUMANIZE.timingCeilingMs)
-    expect(velocityJitter).toBe(STRAIGHT_FUNK_HUMANIZE.velocityJitter)
+    expect(timingFractionOfStep).toBe(KIT_HUMANIZE.timingFractionOfStep)
+    expect(timingCeilingMs).toBe(KIT_HUMANIZE.timingCeilingMs)
+    expect(velocityJitter).toBe(KIT_HUMANIZE.velocityJitter)
     expect(BOSSA_NOVA.humanize.exactVoices).toEqual(['claves'])
   })
 
@@ -163,8 +163,8 @@ describe('bossa nova, as a definition', () => {
   })
 
   it('is its own record, so the exemption cannot reach funk or rock', () => {
-    expect(BOSSA_NOVA.humanize).not.toBe(STRAIGHT_FUNK_HUMANIZE)
-    expect(STRAIGHT_FUNK_HUMANIZE.exactVoices).toEqual([])
+    expect(BOSSA_NOVA.humanize).not.toBe(KIT_HUMANIZE)
+    expect(KIT_HUMANIZE.exactVoices).toEqual([])
   })
 })
 
@@ -527,7 +527,7 @@ describe('the six invariants, under the amended reading', () => {
     )
     const imports = [...source.matchAll(/from '([^']+)'/g)].map(([, path]) => path)
 
-    expect([...new Set(imports)].sort()).toEqual(['./definition', './straightFunk', '@/lib/steps'])
+    expect([...new Set(imports)].sort()).toEqual(['./definition', './shared', '@/lib/steps'])
     expect(Object.keys(bossaNova)).toEqual(['BOSSA_NOVA'])
   })
 })

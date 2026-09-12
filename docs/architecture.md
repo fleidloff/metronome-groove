@@ -120,16 +120,24 @@ a non-zero value, so it was the first to find one that did not —
 and more useful: **a groove that reaches for a mechanism nothing has exercised
 is buying that mechanism, not just adding a file.**
 
-One exception is drawn rather than hidden: a groove imports
-`grooves/straightFunk.ts` for the shared humanize record, which is not funk's
-and has only ever been kept under funk's name.
+**There is no sideways arrow inside `grooves/` any more, and there is a test
+that says so.** Every groove file imports exactly `./definition` for the shape,
+`./shared` for the humanize record and `@/lib/steps` for the grid — nothing
+else, and never another groove.
 
-**That trigger has fired and the move is outstanding.** The rule here read
-*"when a third groove wants it, the record moves to `grooves/shared.ts`"*.
-Rock, bossa and shuffle all import it, so the third arrived in V11 and the
-fourth in V12, and neither change made the move. It is recorded rather than done
-quietly: the move is a rename across four definitions and their tests, and it
-belongs to its own change.
+That was not always true. The record lived in `grooves/straightFunk.ts` from V6,
+under funk's name, and this document carried the exception with a trigger:
+*when a third groove wants it, the record moves to `grooves/shared.ts`*. The
+third arrived in V11, and V12 and V13 each added a fourth and fifth consumer
+without paying it. The move finally happened after V16, and the record is now
+`KIT_HUMANIZE` — a name no groove owns.
+
+**The lesson is about the trigger, not the record.** A rule that names its own
+condition still needs something that checks the condition; three changes read
+that sentence and none of them noticed it had fired. What holds it now is
+`grooves/structure.test.ts`, which reads the folder from disk and fails when a
+groove imports a sibling — so the next reach sideways is a red test rather than
+a paragraph someone has to remember to act on.
 
 **`lib/countIn/` is the second sideways arrow**, and it was weighed rather than
 added quietly. It reaches into `lib/click/` for `CLICK_PATTERN` because a

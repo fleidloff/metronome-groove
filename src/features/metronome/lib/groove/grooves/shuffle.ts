@@ -2,7 +2,7 @@
 
 import { STEPS_PER_BAR } from '@/lib/steps'
 import type { GrooveDefinition, Line } from './definition'
-import { STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+import { KIT_HUMANIZE } from './shared'
 
 const ORDINARY: readonly Line[] = [
   { voice: 'kick', velocity: 0.95, steps: [0] },
@@ -42,7 +42,7 @@ export const SHUFFLE: GrooveDefinition = {
   subdivision: 8,
   seed: 0x5f_73_68_75,
   swing: 2 / 3,
-  humanize: STRAIGHT_FUNK_HUMANIZE,
+  humanize: KIT_HUMANIZE,
   ordinary: [ORDINARY],
   voices: ['kick', 'snare', 'hatClosed', 'hatOpen'],
   light: LIGHT,

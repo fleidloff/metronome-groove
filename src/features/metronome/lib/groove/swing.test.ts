@@ -7,11 +7,8 @@ import type { GrooveDefinition } from './grooves/definition'
 import { ROCK } from './grooves/rock'
 import { SECOND_LINE } from './grooves/secondLine'
 import { SHUFFLE as SHUFFLE_GROOVE } from './grooves/shuffle'
-import {
-  STRAIGHT_FUNK,
-  STRAIGHT_FUNK_HUMANIZE,
-  STRAIGHT_FUNK_SWING,
-} from './grooves/straightFunk'
+import { KIT_HUMANIZE } from './grooves/shared'
+import { STRAIGHT_FUNK, STRAIGHT_FUNK_SWING } from './grooves/straightFunk'
 import { timingBound } from './humanize'
 import { swingOffset } from './swing'
 
@@ -171,7 +168,7 @@ describe('the quarters, which is what a swung groove rests on', () => {
   it('lands a swung odd step late everywhere the app offers, and never early', () => {
     for (let bpm = MIN_BPM; bpm <= MAX_BPM; bpm += 1) {
       const seconds = stepSeconds(bpm, STEPS_PER_BAR)
-      const worstCaseJitter = 2 * timingBound(STRAIGHT_FUNK_HUMANIZE, seconds)
+      const worstCaseJitter = 2 * timingBound(KIT_HUMANIZE, seconds)
 
       for (let step = 1; step < STEPS_PER_BAR; step += 2) {
         const lag = swingOffset(LILT, step, seconds, SIXTEENTHS)

@@ -9,7 +9,7 @@ import { type KitVoiceName, layerFor } from '../kit'
 import { type Line, VOICE_ORDER } from './definition'
 import * as rock from './rock'
 import { ROCK } from './rock'
-import { STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+import { KIT_HUMANIZE } from './shared'
 
 const barOf = (lines: readonly Line[]): readonly (readonly Hit[])[] =>
   Array.from({ length: ROCK.steps }, (_, step) =>
@@ -111,7 +111,7 @@ describe('rock, as a definition', () => {
   })
 
   it('shares the funk humanize record rather than copying its three numbers', () => {
-    expect(ROCK.humanize).toBe(STRAIGHT_FUNK_HUMANIZE)
+    expect(ROCK.humanize).toBe(KIT_HUMANIZE)
     expect(ROCK.humanize).toEqual({
       timingFractionOfStep: 0.03,
       timingCeilingMs: 4,
@@ -358,7 +358,7 @@ describe('the six invariants, under the amended reading', () => {
     )
     const imports = [...source.matchAll(/from '([^']+)'/g)].map(([, path]) => path)
 
-    expect([...new Set(imports)].sort()).toEqual(['./definition', './straightFunk', '@/lib/steps'])
+    expect([...new Set(imports)].sort()).toEqual(['./definition', './shared', '@/lib/steps'])
     expect(Object.keys(rock)).toEqual(['ROCK'])
   })
 

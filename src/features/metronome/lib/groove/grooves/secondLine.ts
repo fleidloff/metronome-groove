@@ -2,7 +2,7 @@
 
 import { STEPS_PER_BAR } from '@/lib/steps'
 import type { GrooveDefinition, Line } from './definition'
-import { STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+import { KIT_HUMANIZE } from './shared'
 
 export const SECOND_LINE_SWING = 0.2
 
@@ -51,7 +51,7 @@ export const SECOND_LINE: GrooveDefinition = {
   subdivision: STEPS_PER_BAR,
   seed: 0x5f_32_6e_64,
   swing: SECOND_LINE_SWING,
-  humanize: STRAIGHT_FUNK_HUMANIZE,
+  humanize: KIT_HUMANIZE,
   voices: ['kick', 'snare', 'hatClosed', 'hatOpen'],
   ordinary: [ORDINARY],
   light: LIGHT,

@@ -11,7 +11,7 @@ import { type Line, VOICE_ORDER } from './definition'
 import { ROCK } from './rock'
 import * as shuffle from './shuffle'
 import { SHUFFLE } from './shuffle'
-import { STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
+import { KIT_HUMANIZE } from './shared'
 
 const barOf = (lines: readonly Line[]): readonly (readonly Hit[])[] =>
   Array.from({ length: SHUFFLE.steps }, (_, step) =>
@@ -126,7 +126,7 @@ describe('shuffle, as a definition', () => {
   })
 
   it('shares the funk humanize record rather than copying its three numbers', () => {
-    expect(SHUFFLE.humanize).toBe(STRAIGHT_FUNK_HUMANIZE)
+    expect(SHUFFLE.humanize).toBe(KIT_HUMANIZE)
     expect(SHUFFLE.humanize).toEqual({
       timingFractionOfStep: 0.03,
       timingCeilingMs: 4,
@@ -435,7 +435,7 @@ describe('the six invariants, under the amended reading', () => {
     )
     const imports = [...source.matchAll(/from '([^']+)'/g)].map(([, path]) => path)
 
-    expect([...new Set(imports)].sort()).toEqual(['./definition', './straightFunk', '@/lib/steps'])
+    expect([...new Set(imports)].sort()).toEqual(['./definition', './shared', '@/lib/steps'])
     expect(Object.keys(shuffle)).toEqual(['SHUFFLE'])
   })
 

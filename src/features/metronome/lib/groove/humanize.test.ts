@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
 import { DYNAMIC_RANGE_DB } from '@/lib/velocity'
 import type { Humanize, VoiceName } from '../transport/source'
-import { STRAIGHT_FUNK_HUMANIZE } from './grooves/straightFunk'
+import { KIT_HUMANIZE } from './grooves/shared'
 import { gainTrim, roundRobinIndex, timingBound, timingOffset } from './humanize'
 
 const VOICES: readonly VoiceName[] = ['kick', 'snare', 'hatClosed', 'hatOpen']
 
 const SEED = 20260912
 
-const RIM_EXACT: Humanize = { ...STRAIGHT_FUNK_HUMANIZE, exactVoices: ['rim'] }
+const RIM_EXACT: Humanize = { ...KIT_HUMANIZE, exactVoices: ['rim'] }
 
 const BOTH_HATS_EXACT: Humanize = {
-  ...STRAIGHT_FUNK_HUMANIZE,
+  ...KIT_HUMANIZE,
   exactVoices: ['hatClosed', 'hatOpen'],
 }
 
@@ -83,14 +83,14 @@ const at = (bpm: number) => stepSeconds(bpm, STEPS_PER_BAR)
 
 const offsetsOver = (count: number, voice: VoiceName, seconds: number) =>
   Array.from({ length: count }, (_, step) =>
-    timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, voice, step, seconds),
+    timingOffset(KIT_HUMANIZE, SEED, voice, step, seconds),
   )
 
 const mean = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
 
 describe('the humanize record', () => {
   it('carries the frozen numbers', () => {
-    expect(STRAIGHT_FUNK_HUMANIZE).toEqual({
+    expect(KIT_HUMANIZE).toEqual({
       timingFractionOfStep: 0.03,
       timingCeilingMs: 4,
       velocityJitter: 0.04,
@@ -101,51 +101,51 @@ describe('the humanize record', () => {
 
 describe('the timing bound', () => {
   it('is a fraction of the step with a millisecond ceiling', () => {
-    expect(timingBound(STRAIGHT_FUNK_HUMANIZE, at(40))).toBeCloseTo(0.004, 12)
-    expect(timingBound(STRAIGHT_FUNK_HUMANIZE, at(100))).toBeCloseTo(0.004, 12)
-    expect(timingBound(STRAIGHT_FUNK_HUMANIZE, at(180))).toBeCloseTo(0.0025, 12)
+    expect(timingBound(KIT_HUMANIZE, at(40))).toBeCloseTo(0.004, 12)
+    expect(timingBound(KIT_HUMANIZE, at(100))).toBeCloseTo(0.004, 12)
+    expect(timingBound(KIT_HUMANIZE, at(180))).toBeCloseTo(0.0025, 12)
   })
 
   it('lets the ceiling bind at the slow end, where 3% of a step is 11 ms', () => {
     expect(0.03 * at(40)).toBeGreaterThan(0.004)
-    expect(timingBound(STRAIGHT_FUNK_HUMANIZE, at(40))).toBeLessThan(0.03 * at(40))
+    expect(timingBound(KIT_HUMANIZE, at(40))).toBeLessThan(0.03 * at(40))
   })
 
   it('lets the fraction bind at the fast end, where 4 ms is 5% of a step', () => {
     expect(0.03 * at(180)).toBeLessThan(0.004)
-    expect(timingBound(STRAIGHT_FUNK_HUMANIZE, at(180))).toBe(0.03 * at(180))
+    expect(timingBound(KIT_HUMANIZE, at(180))).toBe(0.03 * at(180))
   })
 
   it('hands over from the ceiling to the fraction at 112.5 bpm', () => {
-    expect(timingBound(STRAIGHT_FUNK_HUMANIZE, at(112.5))).toBeCloseTo(0.004, 12)
+    expect(timingBound(KIT_HUMANIZE, at(112.5))).toBeCloseTo(0.004, 12)
   })
 })
 
 describe('the timing offset', () => {
   it('is stateless: the same arguments give the same answer, in any order', () => {
-    const first = timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'snare', 7, at(100))
+    const first = timingOffset(KIT_HUMANIZE, SEED, 'snare', 7, at(100))
 
     for (const step of [0, 9, 3, 7, 15, 7, 1, 7]) {
       for (const voice of VOICES) {
-        timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, voice, step, at(100))
+        timingOffset(KIT_HUMANIZE, SEED, voice, step, at(100))
       }
     }
 
-    expect(timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'snare', 7, at(100))).toBe(first)
-    expect(timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'snare', 7, at(100))).toBe(first)
+    expect(timingOffset(KIT_HUMANIZE, SEED, 'snare', 7, at(100))).toBe(first)
+    expect(timingOffset(KIT_HUMANIZE, SEED, 'snare', 7, at(100))).toBe(first)
   })
 
   it('answers a late step the same whether or not the steps before it were asked for', () => {
-    const cold = timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'kick', 9999, at(100))
+    const cold = timingOffset(KIT_HUMANIZE, SEED, 'kick', 9999, at(100))
 
     offsetsOver(9999, 'kick', at(100))
 
-    expect(timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'kick', 9999, at(100))).toBe(cold)
+    expect(timingOffset(KIT_HUMANIZE, SEED, 'kick', 9999, at(100))).toBe(cold)
   })
 
   it('stays inside the bound over ten thousand steps, at every tempo', () => {
     for (const bpm of [40, 100, 180]) {
-      const bound = timingBound(STRAIGHT_FUNK_HUMANIZE, at(bpm))
+      const bound = timingBound(KIT_HUMANIZE, at(bpm))
 
       for (const voice of VOICES) {
         for (const offset of offsetsOver(10_000, voice, at(bpm))) {
@@ -156,14 +156,14 @@ describe('the timing offset', () => {
   })
 
   it('uses the bound it is given rather than sitting near zero', () => {
-    const bound = timingBound(STRAIGHT_FUNK_HUMANIZE, at(100))
+    const bound = timingBound(KIT_HUMANIZE, at(100))
     const reach = Math.max(...offsetsOver(10_000, 'hatClosed', at(100)).map(Math.abs))
 
     expect(reach).toBeGreaterThan(bound * 0.95)
   })
 
   it('leans on no voice: every voice averages the grid, so no backbeat moves', () => {
-    const bound = timingBound(STRAIGHT_FUNK_HUMANIZE, at(100))
+    const bound = timingBound(KIT_HUMANIZE, at(100))
 
     for (const voice of VOICES) {
       expect(Math.abs(mean(offsetsOver(10_000, voice, at(100))))).toBeLessThan(bound * 0.05)
@@ -180,29 +180,29 @@ describe('the timing offset', () => {
 
   it('separates the voices and the seeds', () => {
     const step = 4
-    const voices = VOICES.map((v) => timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, v, step, at(100)))
+    const voices = VOICES.map((v) => timingOffset(KIT_HUMANIZE, SEED, v, step, at(100)))
 
     expect(new Set(voices).size).toBe(VOICES.length)
-    expect(timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED + 1, 'kick', step, at(100))).not.toBe(
-      timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'kick', step, at(100)),
+    expect(timingOffset(KIT_HUMANIZE, SEED + 1, 'kick', step, at(100))).not.toBe(
+      timingOffset(KIT_HUMANIZE, SEED, 'kick', step, at(100)),
     )
   })
 })
 
 describe('the velocity jitter', () => {
   it('is a gain trim, so it can only be applied after the layer is chosen', () => {
-    const trim = gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, 'snare', 7)
+    const trim = gainTrim(KIT_HUMANIZE, SEED, 'snare', 7)
 
     expect(trim).toBeGreaterThan(0)
     expect(typeof trim).toBe('number')
   })
 
   it('stays inside the jitter read through this repo own decibel curve', () => {
-    const ceiling = DYNAMIC_RANGE_DB * STRAIGHT_FUNK_HUMANIZE.velocityJitter
+    const ceiling = DYNAMIC_RANGE_DB * KIT_HUMANIZE.velocityJitter
 
     for (const voice of VOICES) {
       for (let step = 0; step < 10_000; step += 1) {
-        const dB = 20 * Math.log10(gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, voice, step))
+        const dB = 20 * Math.log10(gainTrim(KIT_HUMANIZE, SEED, voice, step))
 
         expect(Math.abs(dB)).toBeLessThanOrEqual(ceiling + 1e-9)
       }
@@ -210,18 +210,18 @@ describe('the velocity jitter', () => {
   })
 
   it('is stateless too, and independent of the timing offset', () => {
-    const first = gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, 'hatOpen', 14)
+    const first = gainTrim(KIT_HUMANIZE, SEED, 'hatOpen', 14)
 
-    timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'hatOpen', 14, at(100))
+    timingOffset(KIT_HUMANIZE, SEED, 'hatOpen', 14, at(100))
 
-    expect(gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, 'hatOpen', 14)).toBe(first)
-    expect(gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, 'hatOpen', 15)).not.toBe(first)
+    expect(gainTrim(KIT_HUMANIZE, SEED, 'hatOpen', 14)).toBe(first)
+    expect(gainTrim(KIT_HUMANIZE, SEED, 'hatOpen', 15)).not.toBe(first)
   })
 
   it('draws separately from the timing, so a late hit is not also a loud one', () => {
     const steps = Array.from({ length: 10_000 }, (_, step) => step)
-    const timing = steps.map((s) => timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'kick', s, at(100)))
-    const gain = steps.map((s) => 20 * Math.log10(gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, 'kick', s)))
+    const timing = steps.map((s) => timingOffset(KIT_HUMANIZE, SEED, 'kick', s, at(100)))
+    const gain = steps.map((s) => 20 * Math.log10(gainTrim(KIT_HUMANIZE, SEED, 'kick', s)))
     const centred = (xs: readonly number[]) => xs.map((x) => x - mean(xs))
     const dot = (a: readonly number[], b: readonly number[]) =>
       a.reduce((sum, x, i) => sum + x * b[i], 0)
@@ -233,7 +233,7 @@ describe('the velocity jitter', () => {
 
   it('averages out rather than pushing a voice up or down', () => {
     const trims = Array.from({ length: 10_000 }, (_, step) =>
-      gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, 'hatClosed', step),
+      gainTrim(KIT_HUMANIZE, SEED, 'hatClosed', step),
     )
 
     expect(mean(trims.map((t) => 20 * Math.log10(t)))).toBeCloseTo(0, 1)
@@ -296,14 +296,14 @@ describe('the exact voices', () => {
       for (const voice of VOICES) {
         for (let step = 0; step < 4 * STEPS_PER_BAR; step += 1) {
           expect(timingOffset(RIM_EXACT, SEED, voice, step, at(bpm))).toBe(
-            timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, voice, step, at(bpm)),
+            timingOffset(KIT_HUMANIZE, SEED, voice, step, at(bpm)),
           )
         }
       }
     }
 
     expect(timingOffset(BOTH_HATS_EXACT, SEED, 'kick', 3, at(100))).toBe(
-      timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, 'kick', 3, at(100)),
+      timingOffset(KIT_HUMANIZE, SEED, 'kick', 3, at(100)),
     )
     expect(timingOffset(BOTH_HATS_EXACT, SEED, 'snare', 4, at(100))).not.toBe(0)
   })
@@ -330,7 +330,7 @@ describe('the exact voices', () => {
   it('trims the exempt voice by exactly what it would have been trimmed unexempted', () => {
     for (let step = 0; step < 4 * STEPS_PER_BAR; step += 1) {
       expect(gainTrim(RIM_EXACT, SEED, 'rim', step)).toBe(
-        gainTrim(STRAIGHT_FUNK_HUMANIZE, SEED, 'rim', step),
+        gainTrim(KIT_HUMANIZE, SEED, 'rim', step),
       )
     }
   })
@@ -338,7 +338,7 @@ describe('the exact voices', () => {
   it('is exactly today behaviour when empty, funk hit for hit over twelve bars', () => {
     for (const voice of VOICES) {
       const offsets = Array.from({ length: 12 * STEPS_PER_BAR }, (_, step) =>
-        Math.round(timingOffset(STRAIGHT_FUNK_HUMANIZE, SEED, voice, step, at(100)) * 1e6),
+        Math.round(timingOffset(KIT_HUMANIZE, SEED, voice, step, at(100)) * 1e6),
       )
 
       expect(offsets).toEqual(FUNK_MICROSECONDS[voice])
