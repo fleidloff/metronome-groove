@@ -12,12 +12,6 @@ const filesUnder = (dir: string): string[] =>
     return /\.tsx?$/.test(entry.name) ? [path] : []
   })
 
-/**
- * Lint reads import specifiers and nothing else, so a `vi.mock` of a
- * cross-boundary path passes `npm run lint` while breaking the same rule. This
- * matcher is the half a linter structurally cannot do, which is why it is
- * tested in its own right below rather than trusted.
- */
 const Q = `['"\`]`
 export function specifiersIn(source: string): string[] {
   return [
@@ -54,10 +48,6 @@ describe('the specifier matcher', () => {
 })
 
 describe('the route boundary', () => {
-  // A guard that reads source has to keep itself out of its own search: the
-  // fixtures above are deliberate violations, written down in a file this scan
-  // would otherwise read. Excluding exactly one file — this one — is the
-  // narrowest way to say that, and it is why the matcher is tested separately.
   const SELF = join(ROOT, 'route-boundary.test.ts')
   const routes = filesUnder(ROOT).filter((path) => path !== SELF)
 

@@ -3,12 +3,10 @@ import { curve, gainFor, MAX_BOOST, type Velocity } from './velocity'
 
 const dB = (gain: number) => 20 * Math.log10(gain)
 
-/** Tighter than the 0.01 dB the tech spec asks for. */
 const DB_PRECISION = 4
 
-/** The pack gives claves one velocity layer, nominalVelocity 0.5.
- *  Written here rather than imported: `src/lib/` is a leaf and may not reach
- *  into the feature that owns these. Source: tech-spec.md `## Contracts`. */
+// Written out rather than imported: `src/lib/` may not reach into the feature
+// that owns the pack. Source: tech-spec.md `## Contracts`.
 const CLAVES_NOMINAL = 0.5
 const CLICK_ACCENT = 0.65
 const CLICK_EVEN = 0.5

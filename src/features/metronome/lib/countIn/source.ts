@@ -4,11 +4,7 @@ import type { Hit, Source } from '../transport/source'
 
 const NOTHING: readonly Hit[] = []
 
-/**
- * A pre-roll that borrows the click's voice, wrapped around any source. It is
- * not a click, so it lives beside `click/` rather than inside it, and the
- * source it wraps learns nothing about it.
- */
+/** specs/9-count-in */
 export function createCountInSource(inner: Source, countIn: () => boolean): Source {
   const stepsPerBeat = inner.steps / CLICK_PATTERN.length
 
@@ -20,12 +16,8 @@ export function createCountInSource(inner: Source, countIn: () => boolean): Sour
         : NOTHING,
   )
 
-  /**
-   * Null while the count bar is sounding, otherwise the step the inner is
-   * asked for. Round-robin take selection, `timingOffset` and `gainTrim` all
-   * read the absolute step, so the groove's first sounding bar has to reach
-   * the inner as its own step 0 or the whole run is a bar out.
-   */
+  /** Null while the count bar sounds, so the inner's first sounding bar is its
+   *  own step 0 and round-robin, displacement and trim all line up. */
   const innerStep = (step: number): number | null => {
     if (!countIn()) return step
 

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { bindMediaKeys } from './mediaKeys'
 
-/** A MediaSession that records what was set, and can refuse like Firefox. */
 function fakeSession({ refuse = false } = {}) {
   const handlers = new Map<string, unknown>()
   const setActionHandler = vi.fn((action: string, handler: unknown) => {
@@ -51,8 +50,6 @@ describe('binding the speaker button', () => {
     const device = fakeSession()
     bindMediaKeys(vi.fn(), { session: device.session, media: fakeMedia() })
 
-    // Left at 'playing' deliberately: the system then believes the page is
-    // playing and sends `pause` every time, rather than alternating.
     expect(device.session.playbackState).toBe('playing')
   })
 
@@ -65,8 +62,6 @@ describe('binding the speaker button', () => {
   })
 
   it('stops claiming to be playing when torn down', () => {
-    // Left at 'playing' with no handler behind it, the session would go on
-    // telling the system a closed page is the music.
     const device = fakeSession()
     const release = bindMediaKeys(vi.fn(), {
       session: device.session,
@@ -122,8 +117,6 @@ describe('failing safely', () => {
   })
 
   it('cleans up even when registering half-succeeded', () => {
-    // A session that takes the handler and then throws on playbackState was
-    // leaking it forever: `bound` was set after the throwing line.
     const handlers = new Map<string, unknown>()
     const session = {
       setActionHandler: (action: string, handler: unknown) => {

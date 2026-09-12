@@ -8,15 +8,9 @@ import {
   CLAVES_SAMPLE_URL,
 } from '../lib/click/claves'
 import { CLICK_SOURCE } from '../lib/click/source'
-import {
-  KIT,
-  KIT_SAMPLE_URLS,
-  KIT_VOICES,
-  layerFor,
-  sampleUrlFor,
-  type KitVoiceName,
-} from '../lib/groove/kit'
+import { KIT, layerFor, sampleUrlFor, type KitVoiceName } from '../lib/groove/kit'
 import { createCountInSource } from '../lib/countIn/source'
+import { BOSSA_NOVA } from '../lib/groove/grooves/bossaNova'
 import type { GrooveDefinition } from '../lib/groove/grooves/definition'
 import { ROCK } from '../lib/groove/grooves/rock'
 import { STRAIGHT_FUNK } from '../lib/groove/grooves/straightFunk'
@@ -37,23 +31,25 @@ export type Audio = {
   context: Pick<AudioContext, 'state' | 'resume' | 'close'>
   clock: { readonly currentTime: number; stopSounding(): void }
   scheduler: Scheduler
+  /** Whether this device's bank can be grown to cover `id` at all. */
+  serves(id: SourceId): boolean
   /**
-   * Points this device at another source drawing the same bank, replacing
-   * `scheduler` in place and returning the new one.
+   * Points this device at another source, decoding whatever that source needs
+   * and this bank does not already hold, then replacing `scheduler` in place.
    *
-   * Every groove plays the same four voices from the same 22 files, so a
-   * groove-to-groove switch has nothing left to decode — and closing the
-   * device to rebuild it would fetch all 22 again. Only the click sits in a
-   * different bank, and a switch across that seam still rebuilds.
+   * Async because the answer is no longer always nothing: a groove declares its
+   * voices, so the next one may want files this device never fetched.
    */
-  retarget(id: SourceId): Scheduler
+  retarget(id: SourceId): Promise<Scheduler>
 }
 
 /**
- * Which bank a source needs. Two sources that answer the same are two sources
- * one device can play, which is what makes a switch between them free.
+ * Which store a source draws from. The click's is closed — the claves alone —
+ * so crossing that seam rebuilds. Every groove draws the claves plus the kit
+ * voices it declares, and a groove device's bank grows, so one groove device
+ * can be pointed at any other groove.
  */
-const bankFor = (id: SourceId) => (id === 'click' ? 'claves' : 'kit')
+const storeFor = (id: SourceId) => (id === 'click' ? 'claves' : 'kit')
 
 /**
  * How the audio is built. Injected so a test can drive this hook without a real
@@ -98,37 +94,43 @@ const buildClavesBank = async (context: AudioContext): Promise<VoiceBank> => {
   }
 }
 
+const urlsFor = (voice: KitVoiceName): readonly string[] =>
+  KIT[voice].layers.flatMap((layer) => layer.urls)
+
 /**
- * The kit's four voices, every take of every layer decoded before a note is
- * scheduled. The lead-in comes from the kit and is zero: `CLAVES_LEAD_IN_S` is
- * a property of that one file, and a kit that inherited it would play 8.3 ms
- * early on every hit.
+ * Grows `bank` in place to cover the voices it is asked for, and returns the
+ * loader that does it. The decoded buffers are keyed by url and outlive a
+ * retarget, so a groove whose voices are already in memory costs no request.
+ *
+ * The lead-in comes from the kit and is zero: `CLAVES_LEAD_IN_S` is a property
+ * of that one file, and a kit that inherited it would play 8.3 ms early.
  */
-const buildKitBank = async (context: AudioContext): Promise<VoiceBank> => {
+const growKitBank = (context: AudioContext, bank: VoiceBank) => {
   const decoded = new Map<string, AudioBuffer>()
 
-  await Promise.all(
-    KIT_SAMPLE_URLS.map(async (url) => {
-      decoded.set(url, await decode(context, url))
-    }),
-  )
+  return async (voices: readonly KitVoiceName[]) => {
+    const wanted = [...new Set(voices.flatMap(urlsFor))]
+    const missing = wanted.filter((url) => !decoded.has(url))
 
-  const bank: VoiceBank = {}
+    await Promise.all(
+      missing.map(async (url) => {
+        decoded.set(url, await decode(context, url))
+      }),
+    )
 
-  for (const voice of KIT_VOICES) {
-    bank[voice] = {
-      leadInSeconds: KIT[voice].leadInSeconds,
-      chokes: KIT_CHOKES[voice],
-      takeFor: (velocity, step) => {
-        const buffer = decoded.get(sampleUrlFor(voice, velocity, step))
-        if (!buffer) return null
+    for (const voice of voices) {
+      bank[voice] ??= {
+        leadInSeconds: KIT[voice].leadInSeconds,
+        chokes: KIT_CHOKES[voice],
+        takeFor: (velocity, step) => {
+          const buffer = decoded.get(sampleUrlFor(voice, velocity, step))
+          if (!buffer) return null
 
-        return { buffer, nominalVelocity: layerFor(voice, velocity).nominalVelocity }
-      },
+          return { buffer, nominalVelocity: layerFor(voice, velocity).nominalVelocity }
+        },
+      }
     }
   }
-
-  return bank
 }
 
 /**
@@ -137,9 +139,15 @@ const buildKitBank = async (context: AudioContext): Promise<VoiceBank> => {
  * falls back to another one.
  */
 const GROOVES: Record<Exclude<SourceId, 'click'>, GrooveDefinition> = {
+  'bossa-nova': BOSSA_NOVA,
   rock: ROCK,
   'straight-funk': STRAIGHT_FUNK,
 }
+
+/** What a source costs to load. The click declares none, and a groove declares
+ *  its own — which is what keeps `rim` off every wire in the app. */
+const voicesFor = (id: SourceId): readonly KitVoiceName[] =>
+  id === 'click' ? [] : GROOVES[id].voices
 
 /**
  * The click declines variations the same way it declines humanize: it is not
@@ -176,10 +184,10 @@ export const buildRealAudio: AudioFactory = async (bpm, id, variations, countIn)
     // click's voice, and a voice the groove never uses is the only thing that
     // states the seam. `claves` gets no entry in `KIT_CHOKES` — it silences
     // nothing and nothing silences it.
-    const bank =
-      id === 'click'
-        ? await buildClavesBank(context)
-        : { ...(await buildClavesBank(context)), ...(await buildKitBank(context)) }
+    const bank: VoiceBank = await buildClavesBank(context)
+    const load = growKitBank(context, bank)
+    await load(voicesFor(id))
+
     const clock = createAudioClock(context, bank)
 
     const schedulerFor = (forId: SourceId) =>
@@ -193,7 +201,9 @@ export const buildRealAudio: AudioFactory = async (bpm, id, variations, countIn)
       context,
       clock,
       scheduler: schedulerFor(id),
-      retarget(next) {
+      serves: (next) => storeFor(next) === storeFor(id),
+      async retarget(next) {
+        await load(voicesFor(next))
         audio.scheduler = schedulerFor(next)
         return audio.scheduler
       },
@@ -354,9 +364,10 @@ export function useClickTransport(
     }
 
     const ensureAudio = (mine: number): Promise<Audio> => {
-      if (live.audio) return Promise.resolve(live.audio)
-      // A second tap during the first load must not build a second device.
+      // Before `live.audio`, so a start landing mid-retarget waits for the
+      // voices that retarget is fetching rather than sounding without them.
       if (live.building) return live.building
+      if (live.audio) return Promise.resolve(live.audio)
 
       const settle = () => {
         live.building = null
@@ -489,30 +500,46 @@ export function useClickTransport(
         silence()
 
         /**
-         * A switch inside one bank keeps the device. Both grooves draw
-         * `KIT_SAMPLE_URLS`, so the kit is already decoded: closing the context
-         * here would refetch 22 files to play samples the page is holding.
-         * Only the seam to the click, which has a bank of its own, rebuilds.
+         * A switch inside one store keeps the device. Its bank already holds
+         * the claves and whatever the last groove wanted, so the next groove
+         * pays only for the voices it adds — closing the context here would
+         * refetch everything the page is already holding. Only the seam to the
+         * click, which has a bank of its own, rebuilds.
          */
-        const device =
-          bankFor(next) === bankFor(live.sourceId) ? live.audio : null
-
-        if (device) {
-          const scheduler = device.retarget(next)
-          scheduler.setTempo(live.bpm)
-          scheduler.onBeat((beat) => live.pending.push(beat))
-        } else {
-          discard()
-        }
+        const device = live.audio?.serves(next) ? live.audio : null
+        if (!device) discard()
 
         live.sourceId = next
+        const mine = live.generation
+
+        if (device) {
+          announceLoading(true)
+
+          const settleRetarget = () => {
+            if (live.generation !== mine) return
+            live.building = null
+            announceLoading(false)
+          }
+
+          live.building = device.retarget(next).then(
+            (scheduler) => {
+              settleRetarget()
+              scheduler.setTempo(live.bpm)
+              scheduler.onBeat((beat) => live.pending.push(beat))
+              return device
+            },
+            (reason: unknown) => {
+              settleRetarget()
+              throw reason
+            },
+          )
+        }
 
         if (wasRunning) {
           begin(live.bpm, false)
           return
         }
 
-        const mine = live.generation
         void ensureAudio(mine).catch((reason: unknown) => {
           if (live.generation !== mine) return
           onFailure(reason)

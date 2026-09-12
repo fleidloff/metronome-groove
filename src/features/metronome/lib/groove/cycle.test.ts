@@ -5,25 +5,30 @@ import type { Hit } from '../transport/source'
 import * as cycle from './cycle'
 import { BARS_PER_CYCLE, barIndexFor, hitsAt } from './cycle'
 import type { GrooveDefinition, Line } from './grooves/definition'
-import { sixInvariantViolations } from './invariants'
+import { sixInvariantViolations, undeclaredVoices } from './invariants'
+import { BOSSA_NOVA } from './grooves/bossaNova'
+import { ROCK } from './grooves/rock'
+import { STRAIGHT_FUNK } from './grooves/straightFunk'
 
-/**
- * A groove that is nobody's music. The cycle and the invariants are machinery,
- * so they are tested against a figure invented for the purpose — a funk-shaped
- * fixture here would make this file a second copy of `grooves/straightFunk`'s
- * assertions and would pass a machine that only ever worked for funk.
- */
 const FIXTURE: GrooveDefinition = {
   id: 'straight-funk',
   steps: 4,
   subdivision: 4,
   seed: 7,
   swing: 0,
-  humanize: { timingFractionOfStep: 0.03, timingCeilingMs: 4, velocityJitter: 0.04 },
+  humanize: {
+    timingFractionOfStep: 0.03,
+    timingCeilingMs: 4,
+    velocityJitter: 0.04,
+    exactVoices: [],
+  },
+  voices: ['kick', 'hatClosed'],
   ordinary: [
-    { voice: 'kick', velocity: 0.95, steps: [0] },
-    { voice: 'hatClosed', velocity: 0.9, steps: [0, 2] },
-    { voice: 'hatClosed', velocity: 0.82, steps: [1, 3] },
+    [
+      { voice: 'kick', velocity: 0.95, steps: [0] },
+      { voice: 'hatClosed', velocity: 0.9, steps: [0, 2] },
+      { voice: 'hatClosed', velocity: 0.82, steps: [1, 3] },
+    ],
   ],
   light: [
     { voice: 'kick', velocity: 0.95, steps: [0] },
@@ -55,8 +60,6 @@ const barAt = (groove: GrooveDefinition, barIndex: number) =>
     hitsAt(groove, barIndex * groove.steps + step, true),
   )
 
-/** A copy of the fixture with one line list replaced — the mutation that has to
- *  turn an invariant red. */
 const mutated = (
   changes: Partial<Pick<GrooveDefinition, 'ordinary' | 'light' | 'fill' | 'subdivision'>>,
 ): GrooveDefinition => ({ ...FIXTURE, ...changes })
@@ -138,7 +141,12 @@ describe('the four-bar cycle', () => {
     const imports = [...source.matchAll(/from '([^']+)'/g)].map(([, path]) => path)
 
     expect([...new Set(imports)].sort()).toEqual(['../transport/source', './grooves/definition'])
-    expect(Object.keys(cycle).sort()).toEqual(['BARS_PER_CYCLE', 'barIndexFor', 'hitsAt'])
+    expect(Object.keys(cycle).sort()).toEqual([
+      'BARS_PER_CYCLE',
+      'barIndexFor',
+      'hitsAt',
+      'phaseFor',
+    ])
   })
 })
 
@@ -166,7 +174,7 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
   it('2. calls a position between the stated steps a rest, not a hole', () => {
     const eighths = mutated({
       subdivision: 2,
-      ordinary: without(FIXTURE.ordinary, 'hatClosed', 1),
+      ordinary: [without(FIXTURE.ordinary[0], 'hatClosed', 1)],
       light: without(FIXTURE.light, 'hatClosed', 1),
       fill: without(FIXTURE.fill, 'hatClosed', 1),
     })
@@ -223,11 +231,73 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
 
   it('6. fails a hat that states no ladder at all, rather than passing an empty one', () => {
     const violations = sixInvariantViolations(
-      mutated({ ordinary: [{ voice: 'kick', velocity: 0.95, steps: [0, 1, 2, 3] }] }),
+      mutated({ ordinary: [[{ voice: 'kick', velocity: 0.95, steps: [0, 1, 2, 3] }]] }),
     )
 
     expect(numbered(violations, 6)).toContain(
-      '6. bar 1/3, ordinary: the closed hat states 0 rung(s), so there is no ladder to check',
+      '6. bar 1/3, ordinary: the closed hat states no rung at all, so the bar has no ladder',
     )
+  })
+
+  it('6. passes a flat hat, because one value has no adjacent pair to compare', () => {
+    const flat = (lines: readonly Line[]): readonly Line[] => [
+      ...lines.filter((line) => line.voice !== 'hatClosed'),
+      { voice: 'hatClosed', velocity: 0.9, steps: [0, 1, 2, 3] },
+    ]
+
+    const violations = sixInvariantViolations(
+      mutated({
+        ordinary: [flat(FIXTURE.ordinary[0])],
+        light: flat(FIXTURE.light),
+        fill: flat(FIXTURE.fill),
+      }),
+    )
+
+    expect(numbered(violations, 6)).toEqual([])
+  })
+
+  it('3. measures a marked bar against the ordinary bar of its own phase', () => {
+    const twoPhase: GrooveDefinition = {
+      ...FIXTURE,
+      ordinary: [
+        FIXTURE.ordinary[0],
+        [
+          { voice: 'kick', velocity: 0.95, steps: [0] },
+          { voice: 'hatClosed', velocity: 0.9, steps: [0, 2] },
+          { voice: 'hatClosed', velocity: 0.82, steps: [1, 3] },
+          { voice: 'snare', velocity: 0.7, steps: [1] },
+        ],
+      ],
+    }
+
+    const right = { ...twoPhase, light: twoPhase.ordinary[1], fill: twoPhase.ordinary[1] }
+    expect(numbered(sixInvariantViolations(right), 3)).toEqual([])
+
+    const wrong = { ...right, light: twoPhase.ordinary[0] }
+    const violations = numbered(sixInvariantViolations(wrong), 3)
+
+    expect(violations.length).toBeGreaterThan(0)
+    expect(violations.every((violation) => violation.includes('bar 2'))).toBe(true)
+  })
+})
+
+describe('a groove declares every voice it plays', () => {
+  it.each([
+    ['straight funk', STRAIGHT_FUNK],
+    ['rock', ROCK],
+    ['bossa nova', BOSSA_NOVA],
+  ])('holds for %s', (_name, groove) => {
+    expect(undeclaredVoices(groove)).toEqual([])
+  })
+
+  it('names a voice the lines play and the declaration leaves out', () => {
+    const underDeclared = { ...ROCK, voices: ['kick', 'snare'] as const }
+
+    expect(undeclaredVoices(underDeclared)).toEqual(['hatClosed', 'hatOpen'])
+  })
+
+  it('ignores the claves, which no groove declares and every bank holds', () => {
+    expect(undeclaredVoices(BOSSA_NOVA)).toEqual([])
+    expect(BOSSA_NOVA.voices).not.toContain('claves')
   })
 })

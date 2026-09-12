@@ -9,8 +9,7 @@ import { GHOST_VELOCITY, STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from './straigh
 
 const STRAIGHT_FUNK_STEPS = STRAIGHT_FUNK.steps
 
-/** The contract table in `specs/6-straight-funk-groove/tech-spec.md`, written
- *  out step by step so the test states it rather than deriving it. */
+/** The contract table in `specs/6-straight-funk-groove/tech-spec.md`. */
 const EXPECTED: readonly (readonly Hit[])[] = [
   [
     { voice: 'kick', velocity: 0.95 },
@@ -119,8 +118,6 @@ describe('the straight funk figure', () => {
 
 const FILL_FROM_STEP = 8
 
-/** Bar 2 of the cycle: the ordinary bar with exactly two edits. Step 10's
- *  closed hat is **replaced**, never joined, by the open one. */
 const LIGHT_EXPECTED: readonly (readonly Hit[])[] = EXPECTED.map((hits, step) => {
   if (step === 10) {
     return [
@@ -137,7 +134,6 @@ const LIGHT_EXPECTED: readonly (readonly Hit[])[] = EXPECTED.map((hits, step) =>
   return hits
 })
 
-/** Bar 4 of the cycle: steps 0–7 ordinary, steps 8–15 the fill. */
 const FILL_EXPECTED: readonly (readonly Hit[])[] = [
   ...EXPECTED.slice(0, FILL_FROM_STEP),
   [
@@ -317,16 +313,10 @@ describe("the six invariants, in every bar of the cycle", () => {
   })
 
   it('6. designs its contours a full ladder step apart, which here is 3.2 dB', () => {
-    // gainTrim is ±40 · velocityJitter dB, so the worst case closes twice that
-    // between two hits. A contour step below it can swap order on a pass.
     const worstCaseJitterDb = 2 * DYNAMIC_RANGE_DB * STRAIGHT_FUNK_HUMANIZE.velocityJitter
 
     expect(worstCaseJitterDb).toBeCloseTo(3.2, 5)
 
-    // The kick line is deliberately not a designed contour: 0.95 / 0.86 / 0.82
-    // puts 0.82 -> 0.86 at half a ladder step, and that pair is frozen twice
-    // over — by V6 and by the toggle-off guarantee that variations off renders
-    // V6 exactly.
     expect(velocitiesIn(cycleBar(0), 'kick')).toEqual([0.95, 0.82, 0.86])
   })
 })

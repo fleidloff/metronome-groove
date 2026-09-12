@@ -1,31 +1,19 @@
 import { gainFor, type Velocity } from '@/lib/velocity'
 import type { Clock, Hit, Placement, VoiceName } from './source'
 
-/**
- * How long a choked voice takes to reach silence. Short enough to read as the
- * hat closing rather than as a fade, long enough not to click.
- */
+/** A hard stop clicks, so a choke ramps over this instead. */
 export const CHOKE_S = 0.01
 
-/** One recording, and the velocity it was played at. */
 export interface Take {
   readonly buffer: AudioBuffer
   readonly nominalVelocity: Velocity
 }
 
 export interface VoiceSound {
-  /** Silence before the attack. The claves' is 8.3 ms; every kit voice's is
-   *  zero. A property of the recording, which is why it lives beside it. */
+  /** Silence before the attack: the claves' is 8.3 ms, every kit voice's zero. */
   readonly leadInSeconds: number
-  /**
-   * Which recording sounds: the velocity layer, and the round-robin take at
-   * this absolute step. Null when the voice has nothing loaded yet.
-   */
+  /** Null while the voice has nothing loaded yet. */
   takeFor(velocity: Velocity, step: number): Take | null
-  /**
-   * Voices this one silences when it sounds. One hi-hat has one state, so a
-   * closed hat cuts a ringing open hat instead of letting the two overlap.
-   */
   readonly chokes?: readonly VoiceName[]
 }
 
@@ -38,10 +26,6 @@ interface Ringing {
   readonly startedAt: number
 }
 
-/**
- * A Clock backed by a real AudioContext. The only place in the feature that
- * touches the audio device — a component may use it, never build it.
- */
 export function createAudioClock(
   context: AudioContext,
   bank: VoiceBank,
@@ -57,12 +41,6 @@ export function createAudioClock(
     return fresh
   }
 
-  /**
-   * Ramps every still-ringing note of `voice` to zero at `at`, rather than
-   * leaving it to decay. An open hat rings about a second and a bar at 100 bpm
-   * is 2.4 s, so without this the open hat on step 14 sounds straight through
-   * the next downbeat.
-   */
   const choke = (voice: VoiceName, at: number) => {
     const sounding = ringing.get(voice)
     if (!sounding) return
@@ -76,7 +54,7 @@ export function createAudioClock(
         note.amp.gain.linearRampToValueAtTime(0, at + CHOKE_S)
         note.source.stop(at + CHOKE_S)
       } catch {
-        // Already stopped or already ended; there is nothing left to cut.
+        // `stop` throws on a node that has already ended.
       }
     }
   }
@@ -119,18 +97,15 @@ export function createAudioClock(
       return bank[voice]?.leadInSeconds ?? 0
     },
 
-    /**
-     * The scheduler cannot un-queue: `Clock` has no cancel, so stopping only
-     * stops queueing and one already-queued hit can still be pending.
-     * Silencing it is the audio node's job, which is here.
-     */
+    /** `Clock` has no cancel, so a hit already queued on the device outlives a
+     *  stopped scheduler and has to be silenced here. */
     stopSounding() {
       for (const sounding of ringing.values()) {
         for (const note of sounding) {
           try {
             note.source.stop()
           } catch {
-            // Already ended; nothing to stop.
+            // `stop` throws on a node that has already ended.
           }
         }
         sounding.clear()

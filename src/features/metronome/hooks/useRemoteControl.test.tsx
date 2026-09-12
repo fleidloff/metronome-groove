@@ -53,8 +53,6 @@ describe('the speaker as a remote', () => {
   })
 
   it('always calls the latest handler, not the one it bound with', () => {
-    // The transport's toggle closes over `running`, so a stale handler would
-    // start a click that is already going.
     const device = fakeSession()
     const first = vi.fn()
     const second = vi.fn()

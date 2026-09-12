@@ -10,25 +10,31 @@ Started 2026-09-12 · `/vibe-with-docs`
 
 ## Done when
 
-* **A fourth entry plays bossa**: a two-bar clave on `rim` over a one-bar kit,
-  across the app's full 40–180 though the figure is written for 120–140.
+**These bullets name `claves` where they first named `rim`.** The voice changed
+after a listening pass, for the reason set out in `## What the ear changed` at
+the end of this file — `rim` is measurably a snare, not a cross-stick.
+
+* **A fourth entry plays bossa**: a two-bar clave on `claves` over a one-bar
+  kit, across the app's full 40–180 though the figure is written for 120–140.
   *Needs an ear:* the clave's level against the kit, whether the flat hat at
   0.66 carries the grid, and whether the fill's two snare notes read as a
   turnaround rather than a mistake.
-* **The clave never stops and is never alone.** `rim` is bit-identical in all
-  four bars, unaffected by the Fills toggle, and every bar keeps the hat on all
-  eight even steps and the kick on at least four — so no marked bar and no
-  thinning can leave the clave exposed.
+* **The clave never stops and is never alone.** It is bit-identical in all four
+  bars, unaffected by the Fills toggle, and every bar keeps the hat on all eight
+  even steps and the kick on at least four — so no marked bar and no thinning
+  can leave the clave exposed.
 * **`rim` ships calibrated, not copied**: 6 files, no new credit string,
   nominals derived per ADR 0008 and proved by extending `kit.test.ts`'s
-  monotonic sweep with no step above 0.5 dB.
-* **The rim is exact in time** via `exactVoices`, while velocity jitter still
+  monotonic sweep with no step above 0.5 dB. It ships **unused** — see the
+  closing section.
+* **The clave is exact in time** via `exactVoices`, while velocity jitter still
   reaches it.
 * **The records are corrected**: ADR 0010 gains an `## Amendments` section with
   two dated entries — V10's subdivision and V11's phase — ADR 0008's stated
   20 ms window is replaced with the method that actually reproduces `kit.ts`,
-  and `docs/music.md` §4 gains the clause saying `claves` is the app's voice and
-  `rim` is the band's.
+  and `docs/music.md` §3 and §4 are corrected where they called `rim` a
+  cross-stick and `claves` its near-duplicate. Both were false and both are why
+  the first attempt picked the wrong voice.
 
 ## Size test
 
@@ -330,3 +336,60 @@ scope for this change**, because V11 is the change that adds that next voice.
 
 * Nothing. The spec is settled; open questions now belong to
   [tech-spec.md](tech-spec.md).
+
+## What the ear changed
+
+The clave shipped on `rim` and a listening pass returned one line:
+
+> *"the rim click doesn't work. it feels more like a snare"*
+
+**It was a snare.** `rim` is MuldjordKit's snare played as a quiet stroke, not a
+cross-stick. Measured against `snare`: dominant partial 210-220 Hz against
+215-225 — 0.4 of a semitone — onset-to-peak 4.92 ms against 4.76, and *less*
+energy above 1 kHz rather than more. Same drum, same room, 126 ms longer ring.
+
+**Two false premises in `docs/music.md` produced the choice**, and both are now
+corrected there:
+
+* *"Cross-stick"* in the §3 inventory. Inherited from the sibling pack, whose own
+  notes describe a VCSL `Snare2_stick` it no longer ships; the files on disk are
+  `SnareRest`, and its inventory table says so.
+* *"`claves` and `rim` are near-duplicates in function."* Measured, 3.0 octaves
+  of centroid apart — `claves` 3059 Hz, `rim` 381 Hz. This was the clause that
+  made `rim` look like a free substitute for `claves`.
+
+**The clave is now `claves` at 0.50**, its own nominal, so the sample plays
+untouched. It sits 20.3 dB clear of the hat inside 1-4 kHz, where 94.5% of its
+energy is, and shares no band with the kick. Fallbacks: 0.47 down, 0.55 up —
+and the knob is the line velocity in `bossaNova.ts`, **never**
+`CLAVES_NOMINAL_VELOCITY`, which would move the click too.
+
+`exactVoices` moves with it, to `['claves']`. Its premise is unchanged: all five
+clave strokes are on even steps, the hat plays every even step, so the clave is
+still doubled on all five and displacing it could only make a flam.
+
+### What this costs, and it was the user's call
+
+V9 decided the count-in is four claves because *"only a voice the groove never
+uses states it."* Bossa now uses it, so a count-in before bossa is four claves
+followed by a clave figure on the same voice — the seam V9 exists to make
+audible.
+
+The user was offered three ways out and took this one:
+
+* **Chosen:** accept the collision. One voice and one velocity change, nothing
+  else. The count-in is off by default, so it only reaches someone who switches
+  it on.
+* Rejected: give bossa its own count-in voice on `rim`, via a `countInVoice`
+  field on `GrooveDefinition` and count-bar velocities derived per voice rather
+  than from `CLICK_PATTERN`'s literals. Correct, and a new mechanism.
+* Rejected: put the clave on `cowbell`. One CC0 file, no mechanism change — but
+  89% of its energy sits in the kit's own 200-500 Hz band, so it competes rather
+  than floats, against Sam's *"the clave floats over the top."*
+
+### `rim` is now shipped and unused
+
+The 6 files (192 KB) stay in `public/samples/`, calibrated in `KIT` and covered
+by `kit.test.ts`'s sweep, and **no groove lists them** — so nothing fetches
+them. Whether to keep a calibrated voice nothing plays is a separate decision
+and has not been taken here.

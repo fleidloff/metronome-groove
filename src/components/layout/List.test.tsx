@@ -5,9 +5,6 @@ import { List } from './List'
 
 const LABEL = 'Steps'
 
-/** The scale spelled out against the class each step must render. Tailwind
- *  reads literal strings out of the source, so an interpolated `gap-${gap}`
- *  produces no CSS at all — the rendered class is the thing worth asserting. */
 const GAPS: ReadonlyArray<readonly [Space, string]> = [
   [0, 'gap-0'],
   [1, 'gap-1'],

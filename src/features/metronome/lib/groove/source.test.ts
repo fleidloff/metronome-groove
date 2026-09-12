@@ -14,23 +14,18 @@ import { createGrooveSource } from './source'
 
 const SECONDS_PER_STEP = stepSeconds(100, STEPS_PER_BAR)
 
-/** Round-robin is 3 bars and the variation cycle 4, so 12 is where they realign. */
 const CYCLE_BARS = 12
 const CYCLE_STEPS = STEPS_PER_BAR * CYCLE_BARS
 
 const takeFor = (hit: Hit, step: number) =>
   sampleUrlFor(hit.voice as KitVoiceName, hit.velocity, step)
 
-/** Bar 4 of each cycle in a twelve-bar run. Their residues mod 3 are 0, 1, 2,
- *  so a fill indexed on the absolute step sounds three distinct take sequences
- *  before it repeats; a phrase-local index would give one, forever. */
 const FILL_BAR_STARTS = [48, 112, 176]
 
 const sameHits = (a: readonly Hit[], b: readonly Hit[]) =>
   a.length === b.length &&
   a.every((hit, i) => hit.voice === b[i].voice && hit.velocity === b[i].velocity)
 
-/** V6's one bar, looped — the reference the flag-off output must reproduce. */
 const v6HitsAt = (step: number) => hitsAt(STRAIGHT_FUNK, step % STEPS_PER_BAR, false)
 
 const takesOver = (source: Source, from: number, count: number) =>
@@ -38,8 +33,6 @@ const takesOver = (source: Source, from: number, count: number) =>
     source.hitsAt(from + offset).map((hit) => takeFor(hit, from + offset)),
   )
 
-/** One bar of takes, with the index the device would use left open — so a test
- *  can show what an absolute index buys over a phrase-local one. */
 const takesFrom = (source: Source, from: number, indexOf: (from: number, offset: number) => number) =>
   Array.from({ length: STEPS_PER_BAR }, (_, offset) =>
     source.hitsAt(from + offset).map((hit) => takeFor(hit, indexOf(from, offset))),

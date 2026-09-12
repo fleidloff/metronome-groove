@@ -1,7 +1,7 @@
 # V12. Shuffle
 
 Started 2026-09-12 · `/vibe-with-docs`
-**Phase:** tech spec
+**Phase:** ready to build — `/implement-vibe-with-docs 12`
 
 ## What
 
@@ -205,30 +205,66 @@ sixteenths; here a straight sixteenth is a wrong note and on the warped grid is
 not even reachable. The groove is defined by skipping the middle triplet, and
 the fill is where it stops skipping. Steps 0–7 are bar 1 verbatim.
 
-| Voice | Steps | Velocity | Sounds at |
-| :-- | :-- | --: | :-- |
-| `kick` | 8, 12 | 0.86 | beats 3, 4 |
-| `snare` | 9 | 0.62 | beat 3 + 1/3 |
-| `snare` | 10 | 0.70 | beat 3 + 2/3 |
-| `snare` | 12 | 0.78 | beat 4 |
-| `snare` | 13 | 0.70 | beat 4 + 1/3 |
-| `snare` | 14 | 0.86 | beat 4 + 2/3 |
-| `snare` | 15 | 0.78 | beat 4 + 5/6 |
-| `hatClosed` | 8 | 0.90 | |
+| Voice | Steps | Velocity | Rendered | Sounds at |
+| :-- | :-- | --: | --: | :-- |
+| `kick` | 0 | 0.95 | −18.21 dBFS | beat 1 |
+| `kick` | 8, 12 | 0.86 | −21.81 dBFS | beats 3, 4 |
+| `snare` | 4 | 0.95 | −17.67 dBFS | beat 2 |
+| `snare` | 9 | 0.62 | −30.89 dBFS | beat 3 + 1/3 |
+| `snare` | 10, 13 | 0.70 | −27.69 dBFS | beat 3 + 2/3, beat 4 + 1/3 |
+| `snare` | 12, 15 | 0.78 | −24.49 dBFS | beat 4, beat 4 + 5/6 |
+| `snare` | 14 | 0.86 | −21.27 dBFS | beat 4 + 2/3 |
+| `hatClosed` | 0, 4, 8, 12 | 0.90 | −30.54 dBFS | |
+| `hatClosed` | 2, 6 | 0.78 | −35.33 dBFS | |
+| `hatOpen` | 10 | 0.76 | −29.07 dBFS | beat 3 + 2/3 |
 
-Step 11 is a rest, and the hat stops after step 8.
+Step 11 is a rest.
 
-**The velocity set is rock's, unchanged** — two interleaved ladders, the stated
-eighths 10/12/14 rising 0.70 → 0.78 → 0.86 and the added triplets 9/13/15 one
-0.08 rung under. The accents land on the groove's own subdivision, which is the
-metronome argument. Reusing rock's numbers is deliberate: the two fills then
-differ by rhythm only, so anything a listener hears between them is the feel.
-The peak is 0.86 on step 14, so the fill crescendos *into* bar 1, and step 15 at
-5/6 of the beat is the standard blues pickup — the first note to drop if it
-reads busy.
+**The hat rides the departure rather than stopping**, as rock's fill does — but
+for a reason specific to shuffle rather than by copying it. V10's argument for
+stopping the hat was that a hat under the added notes makes the doubling read as
+a texture change; that holds for rock, where the added sixteenths sit between
+hat notes at a comparable density. Shuffle's added notes land on the **middle
+triplet, a position the hat never states in any bar of any groove in this app**.
+It is unambiguously new whether or not a hat is playing.
 
-All six of ADR 0010's invariants hold in all three bars, under V10's amended
-invariant 2.
+**The open hat covers empty time, not the gesture.** It sounds at beat 3 + 2/3
+and is choked at beat 4, and the next hit in the bar is that choke — step 9 is
+before it and step 13 after it, so it cannot mask the notes that are the point
+of the bar. Against the snare on its own step it is 1.38 dB under, the same
+pairing rock already makes.
+
+**Step 10 carries the groove's identity in all three bars**: the kick on it in
+bars 1/3, the open hat in bar 2, and in bar 4 the open hat plus the first stated
+note of the crescendo, with the kick stepping aside to keep time on 8 and 12.
+That is a better design than rock's, which previews on a position with no other
+job.
+
+**The velocity set is rock's, and the three departures are each derived:**
+
+| | rock | shuffle | why |
+| :-- | :-- | :-- | :-- |
+| added snare note | step 11, at 0.75 of beat 3 | **step 9**, at 1/3 of beat 3 | rock adds the straight sixteenth; shuffle adds the note it is defined by skipping |
+| `hatClosed` lower rung | 0.82 — 3.19 dB | **0.78** — 4.79 dB | long-short in dynamics, not only in time |
+| `hatOpen` | 0.80 | **0.76** | derived from shuffle's own displaced 0.78 closed hat, per ADR 0008 |
+
+Everything else is rock's exactly — stated eighths 10/12/14 at 0.70 / 0.78 /
+0.86, added notes 9/13/15 one rung under at 0.62 / 0.70 / 0.78 — so what a
+listener hears between the two fills is the rhythm and nothing else. The peak is
+0.86 on step 14, so the fill crescendos *into* bar 1, and step 15 at 5/6 of the
+beat is the standard blues pickup.
+
+**`hatOpen` must be 0.76 in both marked bars and cannot be rock's 0.80.** The
+preview device needs the two open hats at one level, and ADR 0008 needs that
+level derived from the hat this groove displaces. 0.76 is the only value that
+satisfies both.
+
+All six of ADR 0010's invariants hold in all three bars, checked against
+`invariants.ts`'s actual reading of them rather than against the ADR's prose.
+The tightest margin is the fill's snare contour — `0.62 → 0.70 → 0.78 → 0.70 →
+0.86 → 0.78` is 3.20 dB at three of its five rungs, which is exactly the
+worst-case jitter of `2 × 40 × 0.04` and exactly what the `1e-9` tolerance in
+`ladderViolations` exists for.
 
 ### Where it touches the edges
 
@@ -238,9 +274,14 @@ invariant 2.
   closes it by 8%, at every tempo. At 180 bpm that interval is 55.6 ms — the
   **shortest this app will ever schedule**, a third shorter than funk's
   sixteenths, and still well inside the 100 ms lookahead.
-* **The open hat's choke is more audible than rock's**, because swing moves the
-  open hat later and the choke stays put: 250 ms of ring at 80 bpm against
-  rock's 375. It never rings past its bar. `CHOKE_S` needs no change.
+* **The open hat's choke is more audible than rock's**, in both marked bars,
+  because swing moves the open hat later and the choke on step 12 stays put.
+  Straight that gap is half a beat; swung it is a third — 235 ms at 85 bpm
+  against rock's 375 at 80, so 29–44% shorter across the practice range and cut
+  at roughly −8 dB rather than −12. It never rings past its bar at any tempo and
+  `CHOKE_S` needs no change. The reason step 12 is the choke is better stated
+  here than in rock: it **keeps the ring to one triplet eighth**, the length of
+  the short note the shuffle is built on.
 * **The four dots are unaffected** — `isQuarter(step, 16)` gives the on-beats,
   and swing never displaces an on-beat.
 * **One benign scheduler edge**: `dropOvertakenSteps` compares against grid
@@ -262,7 +303,8 @@ invariant 2.
 | 3 | The hat ladder at 4.79 dB — bouncing, or lopsided? | → 0.82, back to rock's 3.19 dB |
 | 4 | The fill's added triplets at 0.62 / 0.70 — arriving, or a smudge? | raise both a rung |
 | 5 | Fill density, seven snare notes over two beats | drop step 15 |
-| 6 | The light bar's open hat under a kick on the same step | `hatOpen` → 0.80 if the kick masks it |
+| 6 | **The preview must not be quieter than the payoff.** The light bar's open hat sits under a kick 4.06 dB over it; the fill's sits under a snare 1.38 dB over it. A kick is 50–100 Hz and an open hat 5–12 kHz, so masking is not predicted — but this is the one part of the device that could come out backwards | raise both open hats to 0.80, which departs from the ADR 0008 derivation deliberately and must be done in **both** bars or the preview breaks |
+| 7 | **The open hat riding the fill at all** — 235 ms of wash at 85 bpm between the middle triplet on 9 and the backbeat on 12 | drop it and put `hatClosed` 0.78 back on step 10; the closed hat on 12 then becomes optional rather than required by invariant 5 |
 
 ## Done when
 

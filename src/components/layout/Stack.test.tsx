@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest'
 import type { Space } from '@/components/tokens'
 import { Stack } from './Stack'
 
-/** The scale spelled out against the class each step must render — an
- *  interpolated `gap-${gap}` is a class Tailwind never sees. */
 const GAPS: ReadonlyArray<readonly [Space, string]> = [
   [0, 'gap-0'],
   [1, 'gap-1'],

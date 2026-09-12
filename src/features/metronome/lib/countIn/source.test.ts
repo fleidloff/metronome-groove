@@ -6,7 +6,6 @@ import { STRAIGHT_FUNK } from '../groove/grooves/straightFunk'
 import type { Hit, Humanize, Source } from '../transport/source'
 import { createCountInSource } from './source'
 
-/** A sixteen-step inner and a four-step one, so nothing here assumes sixteen. */
 const INNER_SIZES = [STEPS_PER_BAR, BEATS_PER_BAR]
 
 const SECONDS_PER_STEP = stepSeconds(100, STEPS_PER_BAR)
@@ -18,10 +17,9 @@ const SPY_HUMANIZE: Humanize = {
   timingFractionOfStep: 0.05,
   timingCeilingMs: 9,
   velocityJitter: 0.04,
+  exactVoices: [],
 }
 
-/** Unique per step, so a bar's worth of offset reads as a different value
- *  rather than as a coincidence. */
 const innerHitsAt = (step: number): readonly Hit[] => [
   { voice: 'kick', velocity: (step + 1) / 1000 },
 ]
@@ -31,8 +29,7 @@ const innerDisplace = (hit: Hit, step: number, seconds: number) =>
 
 const innerTrim = (hit: Hit, step: number) => 1 + (step + 1) / 100 + hit.velocity
 
-/** The steps of one bar that land on a quarter, derived rather than listed —
- *  `docs/music.md` §5 Q5 leaves the meter open. */
+/** Derived rather than listed: `docs/music.md` §5 Q5 leaves the meter open. */
 const quartersOf = (steps: number) =>
   Array.from({ length: steps }, (_, step) => step).filter((step) => isQuarter(step, steps))
 
@@ -79,8 +76,6 @@ const spyInner = ({ steps = STEPS_PER_BAR, humanize = SPY_HUMANIZE }: SpyOptions
   }
 }
 
-/** An inner that carries neither optional member, which the `?? 0` and `?? 1`
- *  in the contract exist for. */
 const bareInner = (steps = STEPS_PER_BAR): Source => ({
   id: 'straight-funk',
   steps,
@@ -280,8 +275,6 @@ describe('a groove wrapped and armed', () => {
 })
 
 describe('the step takes are indexed on', () => {
-  /** Distinguishable from the step it was given, so a delegation that dropped
-   *  the inner's answer and returned the offset itself reads as a failure. */
   const innerTakeStep = (step: number) => step * 100 + 7
 
   it.each(INNER_SIZES)(

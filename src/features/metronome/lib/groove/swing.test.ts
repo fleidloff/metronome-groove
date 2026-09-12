@@ -32,7 +32,6 @@ describe('swing', () => {
   })
 
   it('is the mechanism a later listening pass needs, so 0.18 is one value away', () => {
-    // 13.5 ms at 100 bpm, which is the figure the spec weighs against the grid.
     expect(swingOffset(0.18, 1, SECONDS_PER_STEP) * 1000).toBeCloseTo(13.5, 1)
   })
 

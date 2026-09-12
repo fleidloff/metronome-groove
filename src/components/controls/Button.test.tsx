@@ -4,8 +4,6 @@ import { Button } from './Button'
 
 const TEXT_SCALE = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl', '7xl', '8xl', '9xl']
 
-/** Where a control sits on the type scale, so "biggest thing on the page" is
- *  compared rather than believed. */
 const textScale = (element: Element) =>
   Math.max(
     -1,

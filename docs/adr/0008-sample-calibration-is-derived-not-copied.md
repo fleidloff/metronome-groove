@@ -48,9 +48,29 @@ steps of 0.001 and requires the rendered level to be monotonic with no step abov
 test catches the failure rather than an ear discovering it later. The measured
 worst case today is 0.070 dB, 14% of the threshold.
 
-**What it costs.** Adding a voice is not a copy. It needs the source measured —
-mean level over the first 20 ms per layer — before it can be calibrated, and the
-sweep test has to be extended to cover it.
+**What it costs.** Adding a voice is not a copy. It needs the source measured
+before it can be calibrated, and the sweep test has to be extended to cover it.
+
+**The method, corrected by V11.** This paragraph used to say *"mean level over
+the first 20 ms per layer"*. **That is not the method that produced `kit.ts`.**
+A 20 ms window misses the eight shipped layers by a constant 9.04 dB with
+7.28 dB of residual scatter — no single offset fits, so it cannot be what was
+run.
+
+What does reproduce them, to ≤ 0.05 dB on seven of eight layers:
+
+> **200 ms RMS, mono, averaged over a layer's takes, minus 1.94 dB.**
+
+| Layer | 200 ms RMS − 1.94 | `kit.ts` |
+| :-- | --: | --: |
+| `kick_v80` | −20.79 | −20.77 |
+| `snare_v44` | −25.95 | −25.97 |
+| `hatClosed_v44` | −44.36 | −44.37 |
+
+This mattered the moment it was written down wrongly: V11 added the first new
+voice since, and a reader following the old sentence would have derived numbers
+that do not sit on the same curve as the eight already shipped — reintroducing
+exactly the layer-boundary cliff this ADR exists to prevent.
 
 **What it rules out.** Importing `pack.json` wholesale, now or later. The two
 manifests look interchangeable and are not.

@@ -29,9 +29,9 @@ const sweep = (voice: KitVoiceName): number[] =>
   })
 
 describe('the kit manifest', () => {
-  it('ships 22 distinct files', () => {
-    expect(KIT_SAMPLE_URLS).toHaveLength(22)
-    expect(new Set(KIT_SAMPLE_URLS).size).toBe(22)
+  it('ships 28 distinct files', () => {
+    expect(KIT_SAMPLE_URLS).toHaveLength(28)
+    expect(new Set(KIT_SAMPLE_URLS).size).toBe(28)
   })
 
   it('points only at files that exist', () => {
@@ -47,6 +47,18 @@ describe('the kit manifest', () => {
     expect(KIT.hatOpen.layers.map((l) => l.urls.length)).toEqual([1])
   })
 
+  it('gives rim two layers of three takes each', () => {
+    expect(KIT.rim.layers.map((l) => l.layer)).toEqual(['v74', 'v127'])
+    expect(KIT.rim.layers.map((l) => l.urls.length)).toEqual([3, 3])
+  })
+
+  it('keeps the clave inside v74 up to 0.843', () => {
+    expect(KIT.rim.layers[0].upperVelocity).toBe(0.843)
+    expect(layerFor('rim', 0.8).layer).toBe('v74')
+    expect(layerFor('rim', 0.843).layer).toBe('v74')
+    expect(layerFor('rim', 0.844).layer).toBe('v127')
+  })
+
   it('carries the recalibrated nominals and boundaries', () => {
     const table = KIT_VOICES.flatMap((voice) =>
       KIT[voice].layers.map((l) => [voice, l.layer, l.nominalVelocity, l.upperVelocity]),
@@ -60,6 +72,8 @@ describe('the kit manifest', () => {
       ['hatClosed', 'v98', 0.794, 0.84],
       ['hatClosed', 'v127', 0.886, 1],
       ['hatOpen', 'v98', 0.886, 1],
+      ['rim', 'v74', 0.8, 0.843],
+      ['rim', 'v127', 0.886, 1],
     ])
   })
 
@@ -82,6 +96,10 @@ describe('the kit manifest', () => {
 })
 
 describe('the velocity sweep', () => {
+  it('covers every kit voice, rim included', () => {
+    expect(KIT_VOICES).toContain('rim')
+  })
+
   it.each(KIT_VOICES)('renders %s monotonically with no step above 0.5 dB', (voice) => {
     const levels = sweep(voice)
 

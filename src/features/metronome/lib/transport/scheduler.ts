@@ -2,16 +2,11 @@ import { BEATS_PER_BAR, isQuarter, stepSeconds } from '@/lib/steps'
 import type { Clock, Hit, Source } from './source'
 import { clampTempo } from './tempo'
 
-/** How far ahead of the clock steps are queued. The driver has to tick well
- *  inside this — a quarter of it is the usual figure. */
 export const LOOKAHEAD_S = 0.1
 
-/** What a beat is to the UI: where it sits in the bar, and the clock time at
- *  which it is *heard* — which is the scheduled time plus the sample's silence.
- *  Only a step that lands on a quarter produces one, so a sixteen-step groove
- *  still lights four dots. */
 export interface Beat {
   readonly index: number
+  /** When the beat is *heard*: the scheduled time plus the sample's lead-in. */
   readonly time: number
 }
 
@@ -29,8 +24,7 @@ export interface Scheduler {
   start(): void
   stop(): void
   setTempo(bpm: number): void
-  /** Queues every step now inside the lookahead window. The caller owns the
-   *  interval it is called on; this module never holds a timer. */
+  /** The caller owns the interval this is called on; this module holds no timer. */
   tick(): void
   onBeat(listener: BeatListener): () => void
 }
@@ -49,20 +43,9 @@ export function createScheduler({
   let step = 0
   let queuedAny = false
 
-  /**
-   * The anchor a step's time is measured from, and the step it belongs to.
-   * A tempo change moves both; nothing else does.
-   */
   let anchorTime = 0
   let anchorStep = 0
 
-  /**
-   * Absolute, never incremental. `sound` is the anchor plus an exact multiple
-   * of the step, so the hundred-thousandth step sits on the grid as squarely
-   * as the first. Adding one step to the last time instead would accumulate
-   * the rounding error of every step before it, which is the drift the user
-   * ruled out: the beat has to keep coming back together.
-   */
   const sound = (at: number) => anchorTime + (at - anchorStep) * seconds
 
   const maxLeadIn = (hits: readonly Hit[]) =>
@@ -74,25 +57,14 @@ export function createScheduler({
         try {
           listener(beat)
         } catch {
-          // The audio clock does not wait on a subscriber, and does not fail
-          // with one.
+          // The audio clock neither waits on a subscriber nor fails with one.
         }
       }
     }
   }
 
-  /**
-   * A step the clock has already overtaken is dropped, not fired late.
-   *
-   * A backgrounded tab throttles the interval that drives `tick`, so seconds
-   * can pass between calls. Without this, every step that fell due in the gap
-   * clamps to `now` and they all sound at once — a burst on returning to the
-   * tab, which is worse than the silence it is trying to make up for.
-   *
-   * Half a step is the grace: later than that and the step has been overtaken.
-   * The skip is a whole number of steps, so the grid phase is preserved and
-   * the bar carries on where it would have been rather than restarting.
-   */
+  // A backgrounded tab throttles the interval driving `tick`, so steps fall due
+  // in bulk; firing them all would burst.
   const dropOvertakenSteps = (now: number) => {
     if (!queuedAny) return
 
@@ -124,8 +96,7 @@ export function createScheduler({
           gain: source.trim?.(hit, step) ?? 1,
         })
 
-        // A hit held back to `now` is heard later than the grid says, and the
-        // dot has to wait for the sound rather than for the grid.
+        // Held back to `now`, so the dot waits for the sound, not for the grid.
         if (at > target) heardAt = Math.max(heardAt, at + leadIn)
       }
 
@@ -154,8 +125,7 @@ export function createScheduler({
       step = 0
       queuedAny = false
       anchorStep = 0
-      // The voice that needs the most silence is the one that starts exactly
-      // now; every other voice on that step waits for it.
+      // The voice needing the most silence starts exactly now; the rest wait.
       anchorTime = clock.currentTime + maxLeadIn(source.hitsAt(0))
       announce(queueWindow())
     },

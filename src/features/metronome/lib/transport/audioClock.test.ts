@@ -4,8 +4,6 @@ import { CHOKE_S, createAudioClock, type Take, type VoiceBank } from './audioClo
 
 const NOMINAL = 0.886
 
-/** Enough of an AudioContext to record what was asked of it. The real one is
- *  never built in a test — a node graph is the device, not a value. */
 function fakeContext(startTime = 0) {
   const started: { buffer: unknown; at: number }[] = []
   const gains: number[] = []
@@ -80,9 +78,6 @@ describe('the audio clock', () => {
     const fake = fakeContext()
     const clock = createAudioClock(fake.context, bank())
 
-    // Across the bar line on purpose. Steps 0-3 are the same as 14-17 under a
-    // bar-local index, so a test that stayed inside one bar could not tell the
-    // two apart -- and telling them apart is the whole point of the rule.
     for (const step of [14, 15, 16, 17]) {
       clock.schedule(step, { voice: 'hatClosed', velocity: 0.9 }, { step, gain: 1 })
     }
@@ -113,8 +108,6 @@ describe('the audio clock', () => {
     const fake = fakeContext()
     const clock = createAudioClock(fake.context, bank())
 
-    // Both queued inside one lookahead window, the open hat due later than the
-    // closed one. A hat that has not sounded cannot be cut short.
     clock.schedule(5, { voice: 'hatOpen', velocity: 0.88 }, { step: 14, gain: 1 })
     clock.schedule(3, { voice: 'hatClosed', velocity: 0.66 }, { step: 15, gain: 1 })
 

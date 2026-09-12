@@ -4,7 +4,8 @@ import { STEPS_PER_BAR } from '@/lib/steps'
 import type { Transport } from '../components/Metronome'
 import { CLAVES_SAMPLE_URL } from '../lib/click/claves'
 import { CLICK_SOURCE } from '../lib/click/source'
-import { KIT_SAMPLE_URLS } from '../lib/groove/kit'
+import { KIT, KIT_SAMPLE_URLS, type KitVoiceName } from '../lib/groove/kit'
+import { readSetup, writeSetup, type Setup } from '../lib/setup/storedSetup'
 import type { SourceId } from '../lib/transport/source'
 import {
   buildRealAudio,
@@ -35,6 +36,7 @@ function fakeAudio() {
   const tick = vi.fn()
 
   const retargeted: SourceId[] = []
+  let builtFor: SourceId = 'click'
 
   const audio: Audio = {
     context: { state: 'running', resume, close },
@@ -49,9 +51,10 @@ function fakeAudio() {
       tick,
       onBeat: vi.fn(() => () => {}),
     },
+    serves: (id) => (id === 'click') === (builtFor === 'click'),
     retarget: (id) => {
       retargeted.push(id)
-      return audio.scheduler
+      return Promise.resolve(audio.scheduler)
     },
   }
 
@@ -59,6 +62,7 @@ function fakeAudio() {
 
   const factory: AudioFactory = (_bpm, source) => {
     built.count += 1
+    builtFor = source
     asked.push(source)
     return new Promise<Audio>((resolve) => {
       release = resolve
@@ -418,6 +422,7 @@ describe('the transport carrying the fills setting', () => {
 describe('the transport choosing what it plays', () => {
   const GROOVE: SourceId = 'straight-funk'
   const ROCK_ID: SourceId = 'rock'
+  const BOSSA_ID: SourceId = 'bossa-nova'
 
   it('builds the click when start is the first thing that happens', async () => {
     const device = fakeAudio()
@@ -572,6 +577,42 @@ describe('the transport choosing what it plays', () => {
     act(() => transport().select?.(ROCK_ID))
 
     expect(device.asked).toEqual([ROCK_ID])
+  })
+
+  it('builds bossa when bossa is chosen, so the fourth entry reaches the transport', () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(BOSSA_ID))
+
+    expect(device.asked).toEqual([BOSSA_ID])
+  })
+
+  it('restores a stored bossa-nova, with no start in sight', async () => {
+    const stored = new Map<string, string>()
+    const storage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        stored.set(key, value)
+      },
+    } as unknown as Storage
+
+    const setup: Setup = {
+      bpm: 120,
+      source: BOSSA_ID,
+      fills: true,
+      countIn: false,
+    }
+    writeSetup(setup, storage)
+
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(readSetup(storage).source))
+    await device.finishLoading()
+
+    expect(device.asked).toEqual([BOSSA_ID])
+    expect(device.start).not.toHaveBeenCalled()
   })
 
   it('keeps the device when one groove is swapped for another', async () => {
@@ -753,6 +794,21 @@ describe('the transport arming the count-in', () => {
 })
 
 describe('what the transport builds for real', () => {
+  const urlsOf = (voice: KitVoiceName): readonly string[] =>
+    KIT[voice].layers.flatMap((layer) => layer.urls)
+
+  /** Every file a device built for these voices has to hold, the claves
+   *  included: every bank carries them, because the count-in borrows them. */
+  const bankOf = (...voices: KitVoiceName[]) => [
+    CLAVES_SAMPLE_URL,
+    ...voices.flatMap(urlsOf),
+  ]
+
+  const FUNK_BANK = bankOf('kick', 'snare', 'hatClosed', 'hatOpen')
+  const BOSSA_BANK = bankOf('kick', 'snare', 'hatClosed')
+
+  const sorted = (urls: readonly string[]) => [...urls].sort()
+
   /**
    * A device that records the sample every scheduled hit reaches for, so what
    * is in a bank can be read from what sounded. Nothing here decodes audio: a
@@ -912,16 +968,88 @@ describe('what the transport builds for real', () => {
     act(() => transport().select?.('straight-funk'))
     await loaded()
 
-    // The claves and the whole kit, once.
+    // The claves and funk's own four voices, once.
     const decoded = device.fetched.length
-    expect(decoded).toBe(KIT_SAMPLE_URLS.length + 1)
+    expect(decoded).toBe(FUNK_BANK.length)
 
     act(() => transport().select?.('rock'))
     await loaded()
 
-    // Both grooves play the same four voices from the same files, so there is
-    // nothing left to download: the device is pointed at the new groove.
+    // Both grooves declare the same four voices, so there is nothing left to
+    // download: the device is pointed at the new groove.
     expect(device.fetched.length).toBe(decoded)
+  })
+
+  it('fetches the voices funk declares, and no rim file', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('straight-funk'))
+    await loaded()
+
+    // The positive set as well as the absence: a load that failed outright
+    // would fetch no rim either, and prove nothing.
+    expect(sorted(device.fetched)).toEqual(sorted(FUNK_BANK))
+    expect(device.fetched.some((url) => url.includes('rim'))).toBe(false)
+  })
+
+  it('fetches the voices bossa declares, and no open hat', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('bossa-nova'))
+    await loaded()
+
+    expect(sorted(device.fetched)).toEqual(sorted(BOSSA_BANK))
+    expect(device.fetched.some((url) => url.includes('hatOpen'))).toBe(false)
+  })
+
+  it('fetches nothing further when bossa follows funk', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('straight-funk'))
+    await loaded()
+    const decoded = device.fetched.length
+    expect(decoded).toBe(FUNK_BANK.length)
+
+    act(() => transport().select?.('bossa-nova'))
+    await loaded()
+
+    // Bossa's three voices are a subset of funk's four, and the buffers are
+    // held by url rather than rebuilt from the current groove's list.
+    expect(device.fetched.length).toBe(decoded)
+  })
+
+  it('fetches only the open hat when funk follows bossa', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('bossa-nova'))
+    await loaded()
+    const held = [...device.fetched]
+
+    act(() => transport().select?.('straight-funk'))
+    await loaded()
+
+    const added = device.fetched.slice(held.length)
+    expect(sorted(added)).toEqual(sorted(urlsOf('hatOpen')))
+    expect(sorted(device.fetched)).toEqual(sorted(FUNK_BANK))
+  })
+
+  it('fetches no rim file on any path through the four sources', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    for (const id of ['bossa-nova', 'straight-funk', 'rock', 'click', 'bossa-nova'] as const) {
+      act(() => transport().select?.(id))
+      await loaded()
+    }
+
+    // `rim` is calibrated and swept, and no groove lists it — so it is 192 KB
+    // nobody downloads.
+    expect(device.fetched.length).toBeGreaterThan(0)
+    expect(device.fetched.some((url) => url.includes('rim'))).toBe(false)
   })
 
   it('fetches the click bank again when the switch crosses to the click', async () => {
@@ -949,7 +1077,7 @@ describe('what the transport builds for real', () => {
     )
     const decoded = device.fetched.length
 
-    audio.retarget('rock')
+    await audio.retarget('rock')
     run(audio, device, 2)
 
     expect(device.fetched.length).toBe(decoded)
@@ -965,5 +1093,37 @@ describe('what the transport builds for real', () => {
       )
       expect(offGrid).toBeLessThan(0.01)
     }
+  })
+
+  it('sounds the bossa clave, on the voice the count-in lends it', async () => {
+    const device = fakeDevice()
+    const audio = await buildRealAudio(120, 'bossa-nova', () => true, () => false)
+
+    // One bar at 120 bpm, with no count bar in front of it — so a claves that
+    // sounds here is the clave itself.
+    run(audio, device, 2)
+
+    const urls = device.started.map((hit) => hit.url)
+    expect(urls).toContain(CLAVES_SAMPLE_URL)
+    expect(urls.some((url) => KIT_SAMPLE_URLS.includes(url))).toBe(true)
+  })
+
+  it('starts bossa on the 3-side after a count bar, not a bar later', async () => {
+    const device = fakeDevice()
+    const audio = await buildRealAudio(120, 'bossa-nova', () => true, () => true)
+
+    // The count bar and bossa's first bar, at 120 bpm.
+    run(audio, device, 3.9)
+
+    const STEP_S = 0.125
+    const clave = device.started
+      .filter((hit) => hit.url === CLAVES_SAMPLE_URL)
+      .map((hit) => Math.round(hit.at / STEP_S))
+      .filter((step) => step >= STEPS_PER_BAR && step < 2 * STEPS_PER_BAR)
+      .map((step) => step - STEPS_PER_BAR)
+
+    // The 3-side states the clave on 0, 6 and 12. A wrapper that mapped only
+    // takes would hand the groove the 2-side, which is 4 and 10.
+    expect(clave).toEqual([0, 6, 12])
   })
 })

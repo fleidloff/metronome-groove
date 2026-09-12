@@ -12,17 +12,10 @@ import {
 } from '../lib/tap/tapTempo'
 import { MIN_BPM as SLOWEST } from '../lib/transport/tempo'
 
-/**
- * Past any window an attempt can have. The opening window is a flat 2 s, but a
- * tapped window is two beats of what was tapped — 3 s at the slowest legal
- * tempo — so the widest is not the opening one.
- */
 const PAST_ANY_WINDOW =
   Math.max(OPENING_WINDOW_S, BEATS_OF_SILENCE * (60 / SLOWEST)) * 1000 + 1
 import { Metronome, type Transport } from './Metronome'
 
-/** Imported rather than restated — a second copy is how 120 survived here
- *  after the app moved to 100. */
 const DEFAULT_BPM = SETUP_DEFAULT_BPM
 
 function fakeTransport() {
@@ -89,16 +82,12 @@ function fakeTransport() {
   }
 }
 
-/** The test owns the clock: a tap reads the next time in this list, so the
- *  arithmetic never waits and never depends on how fast the suite runs. */
 const clockOf = (times: readonly number[]) => {
   let index = 0
   return () => times[Math.min(index++, times.length - 1)]
 }
 
 describe(app.name, () => {
-  // The app persists its setup, so one test's tempo would otherwise open the
-  // next one.
   beforeEach(() => {
     window.localStorage.clear()
   })
@@ -218,7 +207,6 @@ describe(app.name, () => {
   describe('tapping a tempo', () => {
     const TAPS_AT_150 = [10, 10.4, 10.8, 11.2, 11.6, 12]
 
-    /** Taps, then lets the silence commit. */
     const tapThen = (control: HTMLElement, count: number) => {
       for (let tap = 0; tap < count; tap += 1) fireEvent.click(control)
       act(() => {
@@ -234,7 +222,6 @@ describe(app.name, () => {
         const control = screen.getByRole('button', { name: metronome.tap })
 
         for (let tap = 0; tap < 4; tap += 1) fireEvent.click(control)
-        // Four taps in, and nothing has been decided — the silence decides.
         expect(screen.getByRole('status')).toHaveTextContent(
           `${DEFAULT_BPM} ${metronome.tempoUnit}`,
         )
@@ -292,8 +279,6 @@ describe(app.name, () => {
       vi.useFakeTimers()
       try {
         const { transport, resume } = fakeTransport()
-        // A slow tune: 1.4 s apart, just inside 40 bpm. Each tap is inside its
-        // own window, but the attempt spans far more than one window in total.
         const slow = [10, 11.4, 12.8, 14.2]
         render(<Metronome transport={transport} now={clockOf(slow)} />)
         const control = screen.getByRole('button', { name: metronome.tap })
@@ -301,8 +286,6 @@ describe(app.name, () => {
         fireEvent.click(control)
         for (let tap = 1; tap < slow.length; tap += 1) {
           act(() => {
-            // Just short of this attempt's window — 2 s while there is one tap,
-            // then two beats of ~1.4 s once the tapping says what it is.
             vi.advanceTimersByTime(1300)
           })
           expect(resume, `before tap ${tap + 1}`).not.toHaveBeenCalled()
@@ -322,7 +305,6 @@ describe(app.name, () => {
       vi.useFakeTimers()
       try {
         const { transport, resume } = fakeTransport()
-        // 120 bpm: a half-second beat, so the window is 1.0 s — not 2.
         render(<Metronome transport={transport} now={clockOf([10, 10.5, 11])} />)
         const control = screen.getByRole('button', { name: metronome.tap })
 
@@ -371,7 +353,6 @@ describe(app.name, () => {
         }
       }
 
-      // 150 bpm against 60 bpm: the slower tapping must buy a longer window.
       const fast = windowAfter([10, 10.4, 10.8])
       const slow = windowAfter([10, 11, 12])
 
@@ -414,7 +395,6 @@ describe(app.name, () => {
       vi.useFakeTimers()
       try {
         const { transport, resume } = fakeTransport()
-        // 200 bpm: 0.3 s apart.
         render(
           <Metronome transport={transport} now={clockOf([10, 10.3, 10.6, 10.9])} />,
         )
@@ -425,7 +405,6 @@ describe(app.name, () => {
         expect(screen.getByRole('status')).toHaveTextContent(
           `${DEFAULT_BPM} ${metronome.tempoUnit}`,
         )
-        // Refused, but never stranded silent.
         expect(resume).toHaveBeenCalledWith(DEFAULT_BPM)
       } finally {
         vi.useRealTimers()
@@ -471,11 +450,6 @@ describe(app.name, () => {
       vi.useFakeTimers()
       try {
         const { transport, resume } = fakeTransport()
-        // Every tap on the same instant, so there is genuinely no interval to
-        // read. The old fixture was [10, 10.5, 10.5, 11], which stopped
-        // describing "no tempo" once a zero interval became a dropped outlier
-        // rather than a discarded attempt — it commits 120, and only matched
-        // because the default happened to be 120 too.
         render(
           <Metronome transport={transport} now={clockOf([10, 10, 10, 10])} />,
         )
@@ -497,15 +471,12 @@ describe(app.name, () => {
           <Metronome transport={transport} now={clockOf(TAPS_AT_150)} />,
         )
 
-        // Relative, because React's own scheduler holds timers under fake
-        // timers too — an absolute count was asserting against its internals.
+        // React holds its own timers under fake timers, so count relative.
         const before = vi.getTimerCount()
         fireEvent.click(screen.getByRole('button', { name: metronome.tap }))
         expect(vi.getTimerCount()).toBe(before + 1)
 
         view.unmount()
-        // Our commit timer is gone. Not zero: React keeps its own, and
-        // unmounting the component is not its business.
         expect(vi.getTimerCount()).toBeLessThan(before + 1)
       } finally {
         vi.useRealTimers()
@@ -514,7 +485,7 @@ describe(app.name, () => {
   })
 
   describe('the speaker as a remote', () => {
-    /** Stands in for navigator.mediaSession, which jsdom does not have. */
+    // jsdom has no navigator.mediaSession.
     const stubSession = () => {
       const handlers = new Map<string, () => void>()
       const session = {
@@ -528,8 +499,6 @@ describe(app.name, () => {
 
       vi.stubGlobal('navigator', { ...globalThis.navigator, mediaSession: session })
       return {
-        // Wrapped in act: the press sets state, and without flushing it the
-        // next press would read a stale `running` and start twice.
         press: () => act(() => handlers.get('pause')?.()),
         bound: () => handlers.size,
       }
@@ -539,14 +508,11 @@ describe(app.name, () => {
       vi.unstubAllGlobals()
     })
 
-    /** The gesture that lets the page claim a media session at all. */
     const touchThePage = () =>
       fireEvent.click(screen.getByRole('button', { name: metronome.start }))
 
     it('does nothing until the page has been touched', () => {
-      // A browser refuses to let an untouched page play, so the session is
-      // never claimed and the button is not ours. Binding on mount produced a
-      // NotAllowedError in Chrome and a feature that silently did not work.
+      // Chrome throws NotAllowedError when an untouched page claims the session.
       const device = stubSession()
       const { transport, start } = fakeTransport()
       render(<Metronome transport={transport} />)
@@ -605,8 +571,6 @@ describe(app.name, () => {
       device.press()
       device.press()
 
-      // Pressing the speaker must leave the page agreeing with itself, or the
-      // control says Start while the click is running.
       expect(
         screen.getByRole('button', { name: metronome.stop }),
       ).toBeInTheDocument()
@@ -628,18 +592,32 @@ describe(app.name, () => {
   describe('what it plays', () => {
     const GROOVE = 'straight-funk'
     const ROCK = 'rock'
+    const BOSSA = 'bossa-nova'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
 
-    it('offers the click and both grooves, with the click already chosen', () => {
+    it('offers the click and all three grooves, with the click already chosen', () => {
       render(<Metronome />)
 
-      // The order is read top-down by someone choosing: the click because it
-      // is the default, then rock because docs/music.md calls it the baseline.
       expect(
         screen.getAllByRole('option').map((option) => option.textContent),
-      ).toEqual([metronome.click, metronome.rock, metronome.straightFunk])
+      ).toEqual([
+        metronome.click,
+        metronome.bossaNova,
+        metronome.rock,
+        metronome.straightFunk,
+      ])
       expect(picker()).toHaveValue('click')
+    })
+
+    it('asks for bossa the moment it is chosen, like any other groove', () => {
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: BOSSA } })
+
+      expect(select).toHaveBeenCalledWith(BOSSA)
+      expect(picker()).toHaveValue(BOSSA)
     })
 
     it('asks for rock the moment it is chosen, like any other groove', () => {
@@ -658,8 +636,6 @@ describe(app.name, () => {
 
       fireEvent.click(screen.getByRole('button', { name: metronome.start }))
 
-      // Choosing is what buys the download, so a player who only ever presses
-      // Start never fetches a kit they did not ask for.
       expect(select).not.toHaveBeenCalled()
     })
 
@@ -755,8 +731,6 @@ describe(app.name, () => {
       })
       loading(true)
 
-      // Nobody has asked for sound yet, so there is nothing to wait for and
-      // the control keeps offering the press.
       expect(screen.getByRole('button', { name: metronome.start })).toBeVisible()
     })
 
@@ -794,8 +768,6 @@ describe(app.name, () => {
         play.compareDocumentPosition(credit) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
       expect(credit.contains(play)).toBe(false)
-      // Last thing in the frame: there is nothing below it for it to displace,
-      // and start is above it rather than under it.
       expect(credit.nextElementSibling).toBeNull()
     })
   })
@@ -847,8 +819,6 @@ describe(app.name, () => {
     })
 
     it('remembers a tapped tempo, which no handler writes', () => {
-      // The tap commits through setBpm directly rather than through
-      // changeTempo, so a write placed in the handlers would forget this one.
       vi.useFakeTimers()
       try {
         const { transport } = fakeTransport()
@@ -871,10 +841,6 @@ describe(app.name, () => {
     })
 
     it('tells the transport once per change, from one place only', () => {
-      // The lesson of this change is that the handler is not the seam. If
-      // `changeSource` starts selecting again beside the effect, the transport
-      // is told twice — harmless today because it dedupes, and exactly the
-      // drift this test exists to notice.
       const { transport, select } = fakeTransport()
       render(<Metronome transport={transport} />)
 
@@ -887,9 +853,6 @@ describe(app.name, () => {
     })
 
     it('tells the transport about a restored groove, not just the select box', () => {
-      // Restoring set the state and left the transport on its default, so the
-      // box said straight-funk and pressing play gave you the click. Handlers
-      // are not the seam: a restore goes around them.
       window.localStorage.setItem(
         SETUP_KEY,
         JSON.stringify({ version: 1, bpm: 120, source: 'straight-funk' }),
@@ -901,8 +864,6 @@ describe(app.name, () => {
     })
 
     it('tells the transport about a restored rock, which SOURCE_IDS is what validates', () => {
-      // A stored id the validation list does not carry falls back to the
-      // click, so this is the assertion that 'rock' survives a reload.
       window.localStorage.setItem(
         SETUP_KEY,
         JSON.stringify({ version: 1, bpm: 120, source: 'rock' }),
@@ -916,11 +877,21 @@ describe(app.name, () => {
       ).toHaveValue('rock')
     })
 
+    it('tells the transport about a restored bossa, which SOURCE_IDS is what validates', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: 'bossa-nova' }),
+      )
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(select).toHaveBeenCalledWith('bossa-nova')
+      expect(
+        screen.getByRole('combobox', { name: metronome.sound }),
+      ).toHaveValue('bossa-nova')
+    })
+
     it('never writes its defaults over a stored setup while opening', () => {
-      // The read lands a frame after mount, so without a guard the persist
-      // effect fires first with the defaults and puts 100 on disk before 137
-      // replaces it. The end state is right either way, which is why only
-      // watching the writes catches it.
       window.localStorage.setItem(
         SETUP_KEY,
         JSON.stringify({ version: 1, bpm: 137, source: 'straight-funk' }),
@@ -953,6 +924,7 @@ describe(app.name, () => {
   describe('the fills toggle', () => {
     const GROOVE = 'straight-funk'
     const ROCK = 'rock'
+    const BOSSA = 'bossa-nova'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
     const box = () => screen.queryByRole('checkbox', { name: metronome.fills })
@@ -962,8 +934,6 @@ describe(app.name, () => {
     it('is absent from the page while the click is selected', () => {
       render(<Metronome />)
 
-      // Absent, not disabled: a control that does nothing is one more thing to
-      // read past on the way to Play.
       expect(box()).toBeNull()
     })
 
@@ -995,13 +965,19 @@ describe(app.name, () => {
 
       pick(GROOVE)
 
-      // One boolean, not one per groove: switching grooves is not a way to get
-      // the fills back, and the transport is not told otherwise.
       expect(box()).not.toBeChecked()
       expect(setFills).toHaveBeenLastCalledWith(false)
 
       pick('click')
       expect(box()).toBeNull()
+    })
+
+    it('arrives ticked on bossa, whose fills are the only bars its kit moves in', () => {
+      render(<Metronome />)
+
+      pick(BOSSA)
+
+      expect(box()).toBeChecked()
     })
 
     it('sits below Play and holds nothing, with the credit still last', () => {
@@ -1012,15 +988,11 @@ describe(app.name, () => {
       const toggle = box()
       const credit = screen.getByText(app.sampleCredit)
 
-      // After Play in the page and not wrapping it, so appearing and going with
-      // the source can never move the one control the page is for.
       expect(
         play.compareDocumentPosition(toggle!) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
       expect(toggle!.contains(play)).toBe(false)
 
-      // With the credit rather than in the groove select, which is the one place
-      // on the page someone is actually reading.
       expect(
         picker().compareDocumentPosition(toggle!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
@@ -1042,8 +1014,6 @@ describe(app.name, () => {
 
       expect(setFills).toHaveBeenLastCalledWith(false)
       expect(box()).not.toBeChecked()
-      // Nothing is rebuilt and nothing is restarted: the transport reads the
-      // flag as each step is queued, so the change lands inside the lookahead.
       expect(stop).not.toHaveBeenCalled()
       expect(start).toHaveBeenCalledTimes(1)
       expect(select).toHaveBeenCalledTimes(1)
@@ -1136,6 +1106,7 @@ describe(app.name, () => {
   describe('the count-in toggle', () => {
     const GROOVE = 'straight-funk'
     const ROCK = 'rock'
+    const BOSSA = 'bossa-nova'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
     const box = () => screen.queryByRole('checkbox', { name: metronome.countIn })
@@ -1145,8 +1116,6 @@ describe(app.name, () => {
     it('is absent from the page while the click is selected', () => {
       render(<Metronome />)
 
-      // A count-in on the click would be four claves before four claves, so
-      // there is nothing here to offer.
       expect(box()).toBeNull()
     })
 
@@ -1168,12 +1137,13 @@ describe(app.name, () => {
       expect(box()).toBeNull()
     })
 
-    it('arrives with rock exactly as it does with funk', () => {
+    it('arrives with rock and with bossa exactly as it does with funk', () => {
       render(<Metronome />)
 
-      // The guard is the click, not a particular groove: every groove has a
-      // count-in and only the click has none.
       pick(ROCK)
+      expect(box()).toBeVisible()
+
+      pick(BOSSA)
       expect(box()).toBeVisible()
 
       pick(GROOVE)
@@ -1214,8 +1184,6 @@ describe(app.name, () => {
 
       expect(setCountIn).toHaveBeenLastCalledWith(true)
       expect(box()).toBeChecked()
-      // Nothing is restarted to say it: the transport reads the field when a
-      // press of Start arms the run.
       expect(stop).not.toHaveBeenCalled()
       expect(start).not.toHaveBeenCalled()
     })
@@ -1283,9 +1251,6 @@ describe(app.name, () => {
     })
 
     it('opens unticked from a record written before the field existed', () => {
-      // A V7- or V8-shaped record carries no `countIn` key, and the per-value
-      // fallback is what lets it read back complete rather than costing
-      // everyone the tempo a version bump would have discarded.
       window.localStorage.setItem(
         SETUP_KEY,
         JSON.stringify({ version: 1, bpm: 120, source: GROOVE, fills: false }),
@@ -1307,7 +1272,6 @@ describe(app.name, () => {
       const { transport, setCountIn } = fakeTransport()
       render(<Metronome transport={transport} />)
 
-      // A restore goes around the handlers, exactly as it does for the groove.
       expect(setCountIn).toHaveBeenLastCalledWith(true)
     })
 

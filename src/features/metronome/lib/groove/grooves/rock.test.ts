@@ -11,11 +11,6 @@ import * as rock from './rock'
 import { ROCK } from './rock'
 import { STRAIGHT_FUNK_HUMANIZE } from './straightFunk'
 
-/**
- * The bar a line list states, built here rather than read through `cycle.ts`:
- * Track B is the data and owns no machinery. `VOICE_ORDER` is shared, so the
- * only thing this repeats is the filter.
- */
 const barOf = (lines: readonly Line[]): readonly (readonly Hit[])[] =>
   Array.from({ length: ROCK.steps }, (_, step) =>
     lines
@@ -56,16 +51,10 @@ const ORDINARY: readonly (readonly Hit[])[] = [
   [],
 ]
 
-/** Bar 2: one edit, step 10, a substitution. */
 const LIGHT: readonly (readonly Hit[])[] = ORDINARY.map((hits, step) =>
   step === 10 ? [{ voice: 'hatOpen' as VoiceName, velocity: 0.8 }] : hits,
 )
 
-/**
- * Bar 4: steps 0–8 verbatim, step 9 a rest, sixteenths from step 10. The open
- * hat on 10 is bar 2's own event, and the closed hat on 12 is what invariant 5
- * requires after it.
- */
 const FILL: readonly (readonly Hit[])[] = [
   ...ORDINARY.slice(0, 9),
   [],
@@ -85,7 +74,7 @@ const FILL: readonly (readonly Hit[])[] = [
 ]
 
 const BARS = [
-  ['bar 1 / 3, ordinary', ORDINARY, () => barOf(ROCK.ordinary)],
+  ['bar 1 / 3, ordinary', ORDINARY, () => barOf(ROCK.ordinary[0])],
   ['bar 2, the light one', LIGHT, () => barOf(ROCK.light)],
   ['bar 4, the fill', FILL, () => barOf(ROCK.fill)],
 ] as const
@@ -127,6 +116,7 @@ describe('rock, as a definition', () => {
       timingFractionOfStep: 0.03,
       timingCeilingMs: 4,
       velocityJitter: 0.04,
+      exactVoices: [],
     })
   })
 
@@ -136,7 +126,7 @@ describe('rock, as a definition', () => {
 })
 
 describe('bar 1 / 3, the ordinary bar', () => {
-  const bar = () => barOf(ROCK.ordinary)
+  const bar = () => barOf(ROCK.ordinary[0])
 
   it.each(ORDINARY.map((hits, step) => [step, hits] as const))(
     'plays step %i exactly as the table writes it',
@@ -172,7 +162,7 @@ describe('bar 1 / 3, the ordinary bar', () => {
 })
 
 describe('the bar line, which is the kick velocity and nothing else', () => {
-  const bar = () => barOf(ROCK.ordinary)
+  const bar = () => barOf(ROCK.ordinary[0])
 
   it('is not invariant under a shift of half a bar', () => {
     const shifted = shiftedBy(bar(), 8)
@@ -211,7 +201,7 @@ describe('bar 2, the light one', () => {
   )
 
   it('changes exactly one step of the ordinary bar', () => {
-    expect(differingSteps(bar(), barOf(ROCK.ordinary))).toEqual([10])
+    expect(differingSteps(bar(), barOf(ROCK.ordinary[0]))).toEqual([10])
   })
 
   it('substitutes the open hat on step 10 rather than adding it', () => {
@@ -246,7 +236,7 @@ describe('bar 4, the fill', () => {
   )
 
   it('states the groove verbatim through step 8 before it departs', () => {
-    expect(bar().slice(0, 9)).toEqual(barOf(ROCK.ordinary).slice(0, 9))
+    expect(bar().slice(0, 9)).toEqual(barOf(ROCK.ordinary[0]).slice(0, 9))
   })
 
   it('rests on step 9, so the doubling starts on the "and" of 3', () => {
@@ -271,16 +261,13 @@ describe('bar 4, the fill', () => {
   })
 
   it('closes it again on step 12, which is what invariant 5 requires', () => {
-    // Not decoration: an open hat with no closed hat after it inside the bar
-    // rings into the downbeat the fill exists to arrive at. Step 12 keeps the
-    // ring to one eighth, as bar 2's is; step 14 would double it.
     expect(stepsIn(bar(), 'hatClosed')).toEqual([0, 2, 4, 6, 8, 12])
     expect(velocitiesIn([bar()[12]], 'hatClosed')).toEqual([0.9])
   })
 
   it('adds no new hat rung, so the ladder is the one the groove already states', () => {
     const rungs = [...new Set(velocitiesIn(bar(), 'hatClosed'))].sort()
-    expect(rungs).toEqual([...new Set(velocitiesIn(barOf(ROCK.ordinary), 'hatClosed'))].sort())
+    expect(rungs).toEqual([...new Set(velocitiesIn(barOf(ROCK.ordinary[0]), 'hatClosed'))].sort())
   })
 
   it('crescendos as two interleaved ladders, the accents on the stated eighths', () => {
@@ -329,22 +316,8 @@ describe('every velocity renders at the level the table states', () => {
   })
 })
 
-/**
- * ADR 0010's six, under the amendment `spec.md` makes to invariant 2: the
- * groove's **stated subdivision** is what may not be interrupted, and the
- * positions between its steps are rests.
- *
- * The shared helper runs all six against all three bars, including invariant
- * 4, which is behavioural — it drives `displace`, `trim` and `takeStep` with
- * the variations flag both ways and is not something a file's import list can
- * state. What is written out below it is rock-specific: which steps the stated
- * subdivision actually lands on, and which odd positions the fill is allowed
- * to add.
- */
 describe('the six invariants, under the amended reading', () => {
   it('keeps all six, as ADR 0010 writes them for every groove', () => {
-    // No ghost velocity: rock has no ghosts, which is one of the things that
-    // makes it rock rather than funk with notes removed.
     expect(sixInvariantViolations(ROCK)).toEqual([])
   })
 
@@ -369,13 +342,13 @@ describe('the six invariants, under the amended reading', () => {
     const odd = (bar: readonly (readonly Hit[])[]) =>
       bar.flatMap((hits, step) => (step % 2 === 1 && hits.length > 0 ? [step] : []))
 
-    expect(odd(barOf(ROCK.ordinary))).toEqual([])
+    expect(odd(barOf(ROCK.ordinary[0]))).toEqual([])
     expect(odd(barOf(ROCK.light))).toEqual([])
     expect(odd(barOf(ROCK.fill))).toEqual([11, 13, 15])
   })
 
   it.each(BARS)('3. plays the ordinary figure over steps 0-7 of %s', (_name, _table, bar) => {
-    expect(bar().slice(0, 8)).toEqual(barOf(ROCK.ordinary).slice(0, 8))
+    expect(bar().slice(0, 8)).toEqual(barOf(ROCK.ordinary[0]).slice(0, 8))
   })
 
   it('4. reaches for nothing beyond its own data and the step grid', () => {
@@ -404,8 +377,6 @@ describe('the six invariants, under the amended reading', () => {
     const worstCaseJitterDb = 2 * DYNAMIC_RANGE_DB * ROCK.humanize.velocityJitter
     const fill = barOf(ROCK.fill)
 
-    // The kick line is named as excluded in ADR 0010, and rock's two kicks are
-    // equal in the fill by design: two velocities are not a contour.
     const contours: readonly (readonly [string, readonly number[]])[] = [
       ["the fill's stated eighths", [10, 12, 14].map((s) => velocitiesIn([fill[s]], 'snare')[0])],
       ["the fill's added sixteenths", [11, 13, 15].map((s) => velocitiesIn([fill[s]], 'snare')[0])],
@@ -426,8 +397,7 @@ describe('the six invariants, under the amended reading', () => {
       for (let i = 1; i < contour.length; i += 1) {
         const stepDb = Math.abs(DYNAMIC_RANGE_DB * (contour[i] - contour[i - 1]))
 
-        // ≥ rather than >: 0.90 − 0.82 is the worst case exactly, and binary
-        // floating point puts 40 × 0.08 a hair under 3.2.
+        // 40 × 0.08 lands a hair under 3.2 in binary floating point.
         expect(stepDb, `${name}: ${contour[i - 1]} -> ${contour[i]}`).toBeGreaterThanOrEqual(
           worstCaseJitterDb - 1e-9,
         )

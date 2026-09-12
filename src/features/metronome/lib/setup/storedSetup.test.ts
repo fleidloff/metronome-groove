@@ -12,7 +12,6 @@ import {
   writeSetup,
 } from './storedSetup'
 
-/** A storage that can be told to misbehave the way a real one does. */
 function fakeStorage({
   onGet,
   onSet,
@@ -31,7 +30,6 @@ function fakeStorage({
     clear: () => held.clear(),
     key: () => null,
     length: 0,
-    /** What is actually on disk, for a test to inspect or corrupt. */
     raw: () => held.get(SETUP_KEY) ?? null,
     put: (value: string) => held.set(SETUP_KEY, value),
   } as unknown as Storage & { raw: () => string | null; put: (v: string) => void }
@@ -127,8 +125,6 @@ describe('each value falls back on its own', () => {
   })
 
   it('resets an unknown groove and keeps the tempo', () => {
-    // The case this rule exists for: a release renames a groove, and throwing
-    // the whole setup away would forget the tempo the player cared about.
     const setup = readSetup(
       stored({ version: SETUP_VERSION, bpm: 140, source: 'a-groove-we-removed' }),
     )
@@ -157,13 +153,6 @@ describe('each value falls back on its own', () => {
 
 describe('the stored shape', () => {
   it('stays at version 1, because V8 and V9 added fields instead of changing the shape', () => {
-    // Every other case here writes AND reads through SETUP_VERSION, so a bump
-    // would leave them all green while silently discarding every stored tempo
-    // in the wild. V8 added `fills` and V9 added `countIn`, each with a
-    // per-value default, which is exactly the case the per-value fallback
-    // exists for and exactly what a bump is not for. Pinning the literal is
-    // what makes a future bump fail here, with this reason attached, rather
-    // than in four component tests that do not say why.
     expect(SETUP_VERSION).toBe(1)
   })
 
@@ -207,9 +196,6 @@ describe('the fills toggle', () => {
   })
 
   it('reads a record written before the field existed as fills on', () => {
-    // The version is deliberately not bumped: adding a field with a default is
-    // what the per-value fallback is for, and a bump would have discarded
-    // everyone's stored tempo to gain nothing.
     const setup = readSetup(
       stored({ version: SETUP_VERSION, bpm: 137, source: 'straight-funk' }),
     )
@@ -295,9 +281,6 @@ describe('the count-in box', () => {
   })
 
   it('resets a countIn that is the wrong type and keeps the other three', () => {
-    // The cross-contamination case: everything beside it is good and stays
-    // good, which is the whole reason the version is not bumped for a field
-    // that has a default.
     for (const countIn of ['true', 'false', 0, 1, null, {}, []]) {
       const setup = readSetup(
         stored({
@@ -340,8 +323,6 @@ describe('the count-in box', () => {
 
 describe('a shape we no longer understand', () => {
   it('is discarded whole, rather than falling back field by field', () => {
-    // A wrong version is not a bad value — it is a shape whose meaning we
-    // cannot vouch for, so even a plausible field is not trusted.
     const setup = readSetup(
       stored({ version: SETUP_VERSION + 1, bpm: 140, source: 'straight-funk' }),
     )
@@ -399,8 +380,6 @@ describe('storage that will not cooperate', () => {
   })
 
   it('survives a browser where reaching for storage throws', () => {
-    // Some policies make the property access itself throw, before any method
-    // is called. Nothing reached this guard until it was tested directly.
     const exploding = {
       get localStorage(): Storage {
         throw new DOMException('blocked', 'SecurityError')

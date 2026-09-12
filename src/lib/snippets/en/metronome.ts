@@ -11,6 +11,7 @@ export const metronome = {
   tap: 'Tap',
   sound: 'Sound',
   click: 'Click',
+  bossaNova: 'Bossa nova',
   rock: 'Rock',
   straightFunk: 'Straight funk',
   fills: 'Fills',

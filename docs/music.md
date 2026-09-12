@@ -201,7 +201,7 @@ kick       0 8
 
 **Bossa nova** — the clave carries it, the kit stays flat
 ```
-rim        son/bossa clave, two bars
+claves     son/bossa clave, two bars
 hatClosed  0 2 4 6 8 10 12 14
 kick       0 6 8 14
 ```
@@ -249,7 +249,7 @@ file. Both are directly reusable; we would not have to re-derive any of it.
 | `hatOpen` | 3 | 9 | |
 | `ride` | 1 | 3 | Bow, struck with the tip. One layer only |
 | `rideBell` | 2 | 5 | Same cymbal, same session, struck on the bell |
-| `rim` | 2 | 6 | Cross-stick |
+| `rim` | 2 | 6 | **Not a cross-stick** — MuldjordKit snare, quiet stroke. See below |
 | `tomHigh` | 3 | 6 | |
 | `tomLow` | 3 | 6 | |
 | `bongoHigh` | 3 | 6 | |
@@ -328,8 +328,29 @@ into a groove rather than sitting over it). `rideBell` is the fourth option and
 the most musical. A click of `cowbell` on 1 and `claves` on 2–4 is the obvious
 first try.
 
-Note that `claves` and `rim` are near-duplicates in function — both are the dry
-high crack a groove reaches for once. A groove that uses both has neither.
+**`claves` and `rim` are not near-duplicates, and this document said they were
+until V11 measured them.** The old clause claimed both were *"the dry high crack
+a groove reaches for once"* and that a groove using both has neither. Measured,
+their spectral centroids are **3.0 octaves** apart — `claves` at 3059 Hz,
+`rim` at 381 Hz — and `rim` has essentially none of its energy in the band
+`claves` lives in.
+
+**`rim` is a quiet snare stroke, not a cross-stick.** Against `snare`: dominant
+partial 210-220 Hz against 215-225, onset-to-peak 4.92 ms against 4.76, and
+*less* energy above 1 kHz, not more. Same drum, same room, longer ring. The
+sibling pack's inventory says so in its own words — *"MuldjordKit snare, quiet
+stroke (`SnareRest1`)"* — and the "cross-stick" label here was inherited from a
+section of that pack's notes describing a **different file** it no longer ships.
+
+The cost of believing it: V11 put bossa's clave on `rim` and a listening pass
+returned *"the rim click doesn't work. it feels more like a snare."* It was
+literally a snare. The clave is now `claves` at its own nominal, which sits
+20.3 dB clear of the hat inside 1-4 kHz and shares no band with the kick.
+
+What is still true is the allocation question, restated: the pack has **one**
+dry high crack, `claves`, and both the click and any clave figure want it. A
+groove whose clave is on `claves` collides with a count-in on `claves` — V11
+took that trade knowingly rather than spend a voice on avoiding it.
 
 **`claves` does a second job since V9: it counts the groove in.** A count-in is
 one bar of the click — the same `CLICK_PATTERN` accent, the same exact grid —

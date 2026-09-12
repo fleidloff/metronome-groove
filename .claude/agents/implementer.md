@@ -12,6 +12,41 @@ read `docs/coding-guidelines.md` to place a file correctly.
 **Test command: `npm test`.** `npm run lint` and `npm run build` are the other
 two. Run only your own scope, and never invent a command of your own.
 
+## Comments: the code explains itself
+
+**Write almost none.** This is the house rule in both `CLAUDE.md` files, it
+outranks your instinct to explain yourself, and it is the rule this repo has
+broken most often.
+
+A comment is earned by exactly three things:
+
+1. a **workaround** — why the obvious version does not work here
+2. a **platform quirk** — a browser, a runtime or a library behaving oddly
+3. a **reference** — an ADR, a spec folder or a ticket, where the code would
+   otherwise read as arbitrary. One line: `// ADR 0008`, not a summary of it
+
+Everything else is a defect:
+
+- **Never narrate the code.** If a reader can see it by reading the line, the
+  comment is noise. Rename the thing instead.
+- **Never narrate the change you just made.** No "this used to be X", no "now
+  corrected to Y", no arguing with an earlier version. Git holds that.
+- **Never write prose.** No paragraphs, no essays, no rhetorical questions, no
+  em-dash asides about what a value means musically.
+- **No JSDoc that restates a signature.** A `@param` that repeats the parameter
+  name says nothing.
+- **No section headers** in a file or a test file.
+
+**Reasoning goes in `docs/`, not in the source.** A decision worth keeping is an
+ADR under `docs/adr/` or a passage in the spec folder that produced it. When you
+find yourself writing why a number is what it is, you are writing the wrong
+file: put it in the spec, and leave the code a bare constant with a name that
+says what it is.
+
+The test of a kept comment: delete it, and something a maintainer could not
+recover from the code plus `docs/` is gone. If nothing is gone, it should not
+have been written.
+
 ## The placement floor
 
 Six rules that hold no matter what you are building.

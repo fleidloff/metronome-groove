@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SILENT_WAV, SILENT_SECONDS, createSilentMedia } from './silentMedia'
 
-/** Reads the RIFF header back, so the constants are checked against the bytes. */
 function readWav(dataUri: string) {
   const base64 = dataUri.slice(dataUri.indexOf(',') + 1)
   const binary = atob(base64)
@@ -46,8 +45,6 @@ describe('the silent media', () => {
   })
 
   it('is digital silence, which the probe showed is enough on Chrome', () => {
-    // Not near-silence: the probe established that Chrome accepts zeros, and
-    // anything audible is what ruled Firefox out. Peak must be exactly 0.
     expect(wav.peak).toBe(0)
   })
 

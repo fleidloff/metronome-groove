@@ -9,24 +9,18 @@ import { createGrooveSource } from '../groove/source'
 import { hitsAt } from '../groove/cycle'
 import { STRAIGHT_FUNK, STRAIGHT_FUNK_HUMANIZE } from '../groove/grooves/straightFunk'
 
-/**
- * Fixtures, not the app's numbers. The transport knows a `Source` and a
- * `Clock` and nothing else — what the click plays and what the kit's lead-ins
- * are belong to `click/` and `groove/`, and are asserted there. These stand in
- * so the transport can be tested without reaching into either.
- */
 const CLAVES_LEAD_IN_S = 0.0083
 const ACCENT_VELOCITY: Velocity = 0.65
 const EVEN_VELOCITY: Velocity = 0.5
 
-/** 44.1 kHz is what the pack is recorded at, so one sample is the finest
- *  difference the device can render. */
+/** 44.1 kHz: one sample is the finest difference the device can render. */
 const SAMPLE_PERIOD_S = 1 / 44100
 
 const HUMANIZE: Humanize = {
   timingFractionOfStep: 0.03,
   timingCeilingMs: 4,
   velocityJitter: 0.04,
+  exactVoices: [],
 }
 
 const humanizeBoundS = (humanize: Humanize | null, seconds: number) =>
@@ -65,8 +59,7 @@ function testClock(startTime = 0, leadIns: LeadIns = CLAVES_ONLY) {
     voices: () => scheduled.map((entry) => entry.hit.voice),
     gains: () => scheduled.map((entry) => entry.placement.gain),
     steps: () => scheduled.map((entry) => entry.placement.step),
-    /** When a hit is *heard*: what the clock was asked for, plus the silence
-     *  at the head of that voice's own sample. */
+    /** Scheduled time plus that voice's own lead-in. */
     soundTimes: () =>
       scheduled.map((entry) => entry.at + clock.leadInFor(entry.hit.voice)),
     moveTo(time: number) {
@@ -84,7 +77,6 @@ const pump = (fake: TestClock, scheduler: Scheduler, times: number[]) => {
   }
 }
 
-/** The click's shape: four steps, one voice, never humanized. */
 const clickSource = (): Source => ({
   id: 'click',
   steps: BEATS_PER_BAR,
@@ -99,8 +91,6 @@ const clickSource = (): Source => ({
 
 const KIT: readonly VoiceName[] = ['kick', 'snare', 'hatClosed', 'hatOpen']
 
-/** Four voices on every one of sixteen steps — the polyphony the click's
- *  monophonic scheduler could not express. */
 const fourVoiceSource = (humanize: Humanize | null = null): Source => ({
   id: 'straight-funk',
   steps: STEPS_PER_BAR,
@@ -108,13 +98,6 @@ const fourVoiceSource = (humanize: Humanize | null = null): Source => ({
   hitsAt: () => KIT.map((voice) => ({ voice, velocity: 0.8 })),
 })
 
-/**
- * Stateless and bounded, the way `groove/humanize.ts` is — a fixture rather
- * than that module, because the transport's job is to *apply* a displacement,
- * not to know which one. A source carrying a `Humanize` record but no
- * `displace` is what the scheduler's `?? 0` silently turns into a straight
- * grid, so the humanized cases below would assert nothing against it.
- */
 const fixtureOffset = (step: number, bound: number) =>
   bound * Math.sin(step * 12.9898) * 0.999
 
@@ -143,7 +126,6 @@ describe('the scheduler walks steps', () => {
 
     scheduler.start()
 
-    // Four voices on the first step of a 16-step bar, not one.
     expect(fake.scheduled).toHaveLength(KIT.length)
     expect(fake.voices()).toEqual(KIT)
   })
@@ -162,10 +144,6 @@ describe('the scheduler walks steps', () => {
   })
 
   it('subtracts each voice its own lead-in, not one figure for the step', () => {
-    // Four different lead-ins so a scheduler that reads one constant, or reads
-    // the first hit's and applies it to the step, cannot pass. The kit's real
-    // lead-ins are all zero and the claves' is 8.3 ms; that is a fact about
-    // those recordings, and lives with them.
     const leadIns: LeadIns = {
       kick: 0,
       snare: 0.002,
@@ -203,8 +181,6 @@ describe('the scheduler walks steps', () => {
     scheduler.start()
 
     for (const at of fake.ats()) expect(at).toBeGreaterThanOrEqual(2)
-    // The longest lead-in sets the run's offset, so the voice that needs the
-    // most silence is the one that starts exactly now.
     expect(fake.ats()).toEqual([2, 2 + CLAVES_LEAD_IN_S])
   })
 
@@ -245,9 +221,7 @@ describe('the scheduler walks steps', () => {
 
     scheduler.start()
 
-    // A source that round-robins on three indexes the absolute step, so its
-    // period is lcm(3, 16) = 48 steps. A step number that wrapped at the bar
-    // would restart the cycle at step 16 and make every bar bit-identical.
+    // Round-robin on three against a sixteen-step bar: period lcm(3, 16) = 48.
     const voices = fake.voices()
     expect(voices.length).toBeGreaterThanOrEqual(18)
     expect(voices.slice(0, 18)).toEqual(
@@ -290,7 +264,6 @@ describe('the beat the four dots show', () => {
 
     scheduler.start()
 
-    // One bar: sixteen steps queued, four dots lit.
     expect(fake.ats()).toHaveLength(STEPS_PER_BAR)
     expect(heard.map((beat) => beat.index)).toEqual([0, 1, 2, 3])
     for (const [beat, expected] of [0, 0.6, 1.2, 1.8].entries()) {
@@ -351,9 +324,6 @@ describe('the groove comes back to the grid', () => {
       0,
     )
 
-    // Not "small on average" and not "small at the start": the hundred
-    // thousandth step is still on the grid, because every step's time is
-    // computed from the run's start rather than from the step before it.
     expect(worst).toBeLessThanOrEqual(SAMPLE_PERIOD_S)
     expect(Math.abs(times[STEPS] - STEPS * seconds)).toBeLessThanOrEqual(
       SAMPLE_PERIOD_S,
@@ -367,9 +337,6 @@ describe('the groove comes back to the grid', () => {
 
       const times = fake.soundTimes()
       for (let step = 0; step < times.length; step += 1) {
-        // Displaced, never displaced *from the last displacement*. A walk
-        // saturates its range inside a bar; this is pulled back to the grid on
-        // every note, which is the user's condition for allowing it at all.
         expect(Math.abs(times[step] - step * seconds)).toBeLessThanOrEqual(
           tolerance,
         )
@@ -404,14 +371,10 @@ describe('the groove comes back to the grid', () => {
     const moved = humanized.ats()
     expect(moved.length).toBe(grid.length)
 
-    // Each hit sits exactly where its source said, so dropping the displacement
-    // term is a failure rather than a rounding difference.
     for (let step = 0; step < grid.length; step += 1) {
       expect(moved[step] - grid[step]).toBeCloseTo(fixtureOffset(step, bound), 12)
     }
 
-    // And at least one of them actually moved, so a source that displaced by
-    // nothing could not pass this by accident.
     expect(moved.some((at, step) => Math.abs(at - grid[step]) > bound / 10)).toBe(
       true,
     )
@@ -430,8 +393,6 @@ describe('the groove comes back to the grid', () => {
     expect(fake.gains().length).toBeGreaterThan(STEPS_PER_BAR)
     expect(fake.gains().slice(0, 4)).toEqual([0.75, 1, 0.75, 1])
 
-    // Absolute, because round-robin indexes on it: a bar-local step would
-    // restart at 0 and the loop would repeat bit-identically every bar.
     expect(fake.steps().slice(0, STEPS_PER_BAR + 2)).toEqual(
       Array.from({ length: STEPS_PER_BAR + 2 }, (_, step) => step),
     )
@@ -443,8 +404,7 @@ describe('the groove comes back to the grid', () => {
     const scheduler = createScheduler({
       clock: fake.clock,
       bpm: 100,
-      // A source whose timeline sits one bar behind the scheduler's, which is
-      // what a count-in makes of the groove underneath it.
+      // A timeline one bar behind the scheduler's, as a count-in leaves it.
       source: { ...shifted, takeStep: (step) => step - STEPS_PER_BAR },
       lookaheadS: 4,
     })
@@ -501,8 +461,6 @@ describe('the groove comes back to the grid', () => {
 
     const count = 2000
     expect(narrow.ats().length).toBeGreaterThanOrEqual(count)
-    // Identical output for identical settings, whatever the windowing — the
-    // property a random walk cannot have.
     expect(narrow.ats().slice(0, count)).toEqual(wide.ats().slice(0, count))
   })
 })
@@ -586,11 +544,9 @@ describe('the click scheduler', () => {
     scheduler.onBeat((beat) => heard.push(beat))
 
     scheduler.start()
-    // A backgrounded tab: setInterval is throttled and three seconds pass
-    // between ticks. Six beats were due; none of them was heard.
+    // A backgrounded tab: the driving interval is throttled for three seconds.
     pump(fake, scheduler, [3])
 
-    // One beat, not a burst of six.
     expect(fake.ats()).toEqual([0, 3])
     expect(heard).toHaveLength(2)
   })
@@ -608,12 +564,8 @@ describe('the click scheduler', () => {
     scheduler.start()
     pump(fake, scheduler, [3, 3.45, 3.95])
 
-    // Beat 1 of the run was index 0 at t=0. Six beats of 0.5 s later, t=3.0 is
-    // index 6 % 4 = 2, and the bar carries on from there rather than restarting.
     expect(heard.map((beat) => beat.index)).toEqual([0, 2, 3, 0])
 
-    // Still on the original grid: every beat sits a whole number of beats
-    // after the first, so the stall moved nothing off the click's own time.
     for (const at of fake.ats()) {
       expect(Math.abs((at * 2) % 1)).toBeLessThan(1e-9)
     }
@@ -671,10 +623,6 @@ describe('the click scheduler', () => {
   })
 
   it('changes tempo on a sixteen-step source at the sixteenth, not the quarter', () => {
-    // Every other setTempo case drives the four-step click, where a step and a
-    // beat are the same thing. They all pass against a scheduler that re-reads
-    // the new tempo on the wrong grid, which would leave the groove running
-    // four times too slow after any tempo change.
     const fake = testClock(0, {})
     const scheduler = createScheduler({
       clock: fake.clock,
@@ -695,25 +643,12 @@ describe('the click scheduler', () => {
     scheduler.setTempo(60)
     pump(fake, scheduler, [at120 + at60 * 0.9, at120 + at60 * 1.9])
 
-    // The step after the change is one sixteenth at 60 bpm later, not one
-    // quarter and not one sixteenth at the old tempo.
     expect(fake.ats()).toEqual([0, at120, at120 + at60, at120 + at60 * 2])
 
-    // And it is steps 0-3 that landed there. Asserting the times alone is not
-    // enough: a setTempo that did nothing on a sixteen-step source produces
-    // the same four clock times from steps 0, 1, 3, 5, because the ones it
-    // overruns are dropped as overtaken.
     expect(fake.steps()).toEqual([0, 1, 2, 3])
   })
 
   it('plays the real straight funk source through the real scheduler', () => {
-    // The fixtures above stand in for a Source so the transport can be tested
-    // alone. This is the joint itself: nothing else puts the shipped groove
-    // through the shipped scheduler.
-    // At both ends of the range as well as the middle: the humanize bound is a
-    // fraction of a step with a ceiling, so 40 and 180 exercise different sides
-    // of that Math.min and nothing else in the suite runs the shipped source
-    // anywhere but 100.
     for (const bpm of [40, 100, 180]) {
     const seconds = stepSeconds(bpm, STEPS_PER_BAR)
     const bound = humanizeBoundS(STRAIGHT_FUNK_HUMANIZE, seconds)
@@ -722,13 +657,8 @@ describe('the click scheduler', () => {
     const scheduler = createScheduler({
       clock: fake.clock,
       bpm,
-      // Variations off: this case guards the joint, and the four-bar cycle is
-      // groove/cycle.test.ts's subject. With them on, the comparison below
-      // would be against a bar the source is no longer playing.
+      // Variations off: the four-bar cycle is groove/cycle.test.ts's subject.
       source: createGrooveSource(STRAIGHT_FUNK, { variations: () => false }),
-      // A full bar and a little, at whichever tempo. A fixed window in seconds
-      // covers ten steps at 40 bpm and forty-eight at 180, so the open hat on
-      // step 14 would simply not be reached at the bottom of the range.
       lookaheadS: seconds * (STEPS_PER_BAR + 1),
     })
 
@@ -739,12 +669,6 @@ describe('the click scheduler', () => {
     expect(fake.voices()).toContain('hatClosed')
     expect(fake.voices()).toContain('hatOpen')
 
-    // What this case guards is the JOINT, not the figure. Every hit the source
-    // declared arrives at the clock unaltered, on the step it was written for.
-    // What the figure *should* contain is asserted in grooves/straightFunk.test.ts
-    // against a hand-written table — checking it here against `hitsAt` would be
-    // the same function on both sides of the equals sign, and would stay green if the
-    // figure lost a voice.
     const queued = Math.max(...fake.steps()) + 1
     for (let step = 0; step < queued; step += 1) {
       const arrived = fake.scheduled
@@ -762,9 +686,6 @@ describe('the click scheduler', () => {
       )
     }
 
-    // The bound is an upper limit, so it is satisfied by a source that displaced
-    // nothing at all. Something has to have actually moved for the humanize to
-    // have survived the journey.
     const moved = fake.scheduled.filter(
       (entry) => Math.abs(entry.at - entry.placement.step * seconds) > bound / 10,
     )
@@ -872,9 +793,6 @@ describe('the beat event', () => {
 
   it('schedules the whole window before it notifies anyone', () => {
     const fake = testClock(0)
-    // A wide lookahead so one window holds several beats. This used to be
-    // provoked by stalling the clock, which now correctly drops the beats it
-    // overtakes — the subject here is ordering, not what a stall does.
     const scheduler = createScheduler({
       clock: fake.clock,
       bpm: 120,
@@ -888,9 +806,6 @@ describe('the beat event', () => {
     scheduler.start()
 
     expect(fake.scheduled).toHaveLength(3)
-    // Every listener saw the full window already queued: the audio is committed
-    // to the device before anything renders, so a slow subscriber cannot delay
-    // a beat.
     expect(queuedWhenNotified).toEqual([3, 3, 3])
   })
 })

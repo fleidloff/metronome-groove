@@ -11,7 +11,6 @@ import {
   windowFor,
 } from './tapTempo'
 
-/** Taps at a steady interval, starting at 10 s. */
 const taps = (interval: number, count: number) =>
   Array.from({ length: count }, (_, index) => 10 + index * interval)
 
@@ -78,7 +77,6 @@ describe('what the silence commits', () => {
 
 describe('a fumbled tap', () => {
   it('is dropped when there are enough taps to tell', () => {
-    // Steady 0.5 s, but the third tap lands late and the player carries on.
     expect(tempoFrom([10, 10.5, 11.4, 11.9])).toEqual({
       kind: 'tempo',
       bpm: 120,
@@ -100,7 +98,6 @@ describe('a fumbled tap', () => {
   })
 
   it('is averaged in when it is close enough to be a real beat', () => {
-    // Inside OUTLIER_RATIO of the median, so it is playing, not fumbling.
     const nudged = 0.5 * (1 + OUTLIER_RATIO / 2)
     const result = tempoFrom([10, 10.5, 11, 11 + nudged])
 
@@ -109,8 +106,6 @@ describe('a fumbled tap', () => {
   })
 
   it('has no protection at two taps, which is the price of no tap count', () => {
-    // One interval is its own median, so nothing can be an outlier. A fumbled
-    // double-tap is a real tempo — the range check is all that stands behind it.
     expect(tempoFrom([10, 10.4])).toEqual({ kind: 'tempo', bpm: 150 })
   })
 })
@@ -132,9 +127,6 @@ describe('a tempo outside the range', () => {
 
 describe('an interval that is not a beat at all', () => {
   it('is dropped like any other fumble, not taken as a reason to give up', () => {
-    // A doubled event or a held key repeats a timestamp. Seven good intervals
-    // describe 120 bpm and one is zero — the zero is the most out-of-line
-    // interval there is, which is exactly what the outlier rule is for.
     expect(tempoFrom([10, 10.5, 11, 11.5, 12, 12.5, 12.5, 13])).toEqual({
       kind: 'tempo',
       bpm: 120,
@@ -154,11 +146,8 @@ describe('an interval that is not a beat at all', () => {
 
 describe('the window before the next tap', () => {
   it('is two beats of whatever is being tapped', () => {
-    // 120 bpm is a half-second beat, so two beats is one second.
     expect(windowFor(tapAll([10, 10.5]))).toBeCloseTo(1, 10)
-    // 180 bpm.
     expect(windowFor(tapAll(taps(60 / 180, 3)))).toBeCloseTo(2 / 3, 10)
-    // 40 bpm.
     expect(windowFor(tapAll(taps(60 / 40, 3)))).toBeCloseTo(3, 10)
   })
 
@@ -168,8 +157,6 @@ describe('the window before the next tap', () => {
   })
 
   it('opens wide enough that no legal second tap is ever cut off', () => {
-    // Whatever a player taps, their second tap cannot legally arrive later
-    // than the slowest tempo's beat — which is what makes this window safe.
     expect(OPENING_WINDOW_S).toBe(2)
     expect(OPENING_WINDOW_S).toBeGreaterThan(60 / MIN_BPM)
   })
@@ -182,32 +169,22 @@ describe('the window before the next tap', () => {
   })
 
   it('tracks the tapping rather than the first interval alone', () => {
-    // Starts near 100 bpm and settles at 150; the window follows the average.
     const drifting = tapAll([10, 10.6, 11, 11.4])
     expect(windowFor(drifting)).toBeLessThan(windowFor(tapAll([10, 10.6])))
   })
 
   it('leaves room for a player who is late, which is why it is two beats', () => {
-    // The invariant, probed properly. A *perfect* tapper lands exactly one beat
-    // later and survives even a one-beat window — `beat > beat` is false — so
-    // probing with a perfect tapper asserts nothing. The argument for two beats
-    // is tolerance for a human, so the probe is a human: 20% late.
     for (const bpm of [40, 120, 180]) {
       const beat = 60 / bpm
       const steady = tapAll(taps(beat, 4))
       const late = 10 + 3 * beat + beat * 1.2
 
       expect(hasExpired(steady, late), `${bpm}`).toBe(false)
-      // And the window really is wider than the beat it came from.
       expect(windowFor(steady), `${bpm}`).toBeGreaterThan(beat)
     }
   })
 
   it('holds the boundary open rather than closed, which is what makes 30 bpm tappable', () => {
-    // Deliberate, not incidental: a tap landing exactly on the window is still
-    // in time. This is the whole reason 30 bpm can be tapped at all, and until
-    // this test the behaviour was guarded only by a fixture that happened to
-    // sit on the boundary.
     const opening = tapAll([10])
     expect(hasExpired(opening, 10 + OPENING_WINDOW_S)).toBe(false)
     expect(hasExpired(opening, 10 + OPENING_WINDOW_S + 0.001)).toBe(true)
@@ -217,9 +194,6 @@ describe('the window before the next tap', () => {
   })
 
   it('cannot assemble a tempo slower than the opening window allows', () => {
-    // Documented in spec.md: below 30 bpm a second tap always arrives too late,
-    // so the attempt restarts forever and no tempo is ever refused — it simply
-    // never forms. Costs nothing while 40 bpm is the floor.
     const tooSlow = 60 / 25
     const first = addTap(EMPTY_TAPS, 10)
     const second = addTap(first, 10 + tooSlow)

@@ -1,4 +1,3 @@
-/** One choice the control offers: the value it reports, and the word shown. */
 export interface SelectOption<T extends string> {
   readonly value: T
   readonly label: string

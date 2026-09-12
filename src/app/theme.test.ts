@@ -14,7 +14,6 @@ const themeBlock = () => {
   return css.slice(open + 1, css.indexOf('}', open))
 }
 
-/** Everything outside the @theme block — where a property must be *declared*. */
 const outsideTheme = () => {
   const start = css.indexOf('@theme')
   return css.slice(0, start) + css.slice(css.indexOf('}', start) + 1)
@@ -36,8 +35,7 @@ describe('the theme', () => {
 
     expect(referenced.length).toBeGreaterThan(0)
 
-    // A font face is injected onto <html> by next/font, so it is declared in
-    // the layout rather than the stylesheet. Everything else is the sheet's own.
+    // next/font injects a --font-* face onto <html>, not into the stylesheet.
     const fromLayout = referenced.filter((name) => name.startsWith('--font-'))
     const fromSheet = referenced.filter((name) => !name.startsWith('--font-'))
 

@@ -1,24 +1,19 @@
-/**
- * The four-bar cycle, over any groove's data. Nothing here knows which groove
- * it is reading: the lines, the swing, the seed and the humanize record all
- * live in `grooves/`, and this file only says how a bar becomes hits and which
- * bar an absolute step falls in.
- */
-
 import type { Hit } from '../transport/source'
 import { type GrooveDefinition, type Line, VOICE_ORDER } from './grooves/definition'
 
 export const BARS_PER_CYCLE = 4
 
-/**
- * Which bar of the cycle an absolute step falls in: 0 ordinary, 1 the light
- * one, 2 ordinary, 3 the fill. Derived from the step and never stored, which is
- * what keeps the figure stateless.
- */
-export function barIndexFor(step: number, stepsPerBar: number): number {
-  const bar = Math.floor(step / stepsPerBar)
+const absoluteBar = (step: number, stepsPerBar: number) =>
+  Math.floor(step / stepsPerBar)
 
-  return ((bar % BARS_PER_CYCLE) + BARS_PER_CYCLE) % BARS_PER_CYCLE
+const wrap = (value: number, modulus: number) => ((value % modulus) + modulus) % modulus
+
+export function barIndexFor(step: number, stepsPerBar: number): number {
+  return wrap(absoluteBar(step, stepsPerBar), BARS_PER_CYCLE)
+}
+
+export function phaseFor(step: number, groove: GrooveDefinition): number {
+  return wrap(absoluteBar(step, groove.steps), groove.ordinary.length)
 }
 
 const barOf = (lines: readonly Line[], steps: number): readonly (readonly Hit[])[] =>
@@ -31,40 +26,40 @@ const barOf = (lines: readonly Line[], steps: number): readonly (readonly Hit[])
 
 type Cycle = readonly (readonly (readonly Hit[])[])[]
 
-/** Built once per definition. The scheduler asks for every step of every bar,
- *  and a definition is a frozen constant, so the bars are worth keeping. */
-const cycles = new WeakMap<GrooveDefinition, Cycle>()
+const cycles = new WeakMap<GrooveDefinition, Bars>()
 
-function cycleFor(groove: GrooveDefinition): Cycle {
+interface Bars {
+  readonly ordinary: Cycle
+  readonly light: readonly (readonly Hit[])[]
+  readonly fill: readonly (readonly Hit[])[]
+}
+
+function barsFor(groove: GrooveDefinition): Bars {
   const cached = cycles.get(groove)
   if (cached) return cached
 
-  const ordinary = barOf(groove.ordinary, groove.steps)
-  const cycle: Cycle = [
-    ordinary,
-    barOf(groove.light, groove.steps),
-    ordinary,
-    barOf(groove.fill, groove.steps),
-  ]
+  const bars: Bars = {
+    ordinary: groove.ordinary.map((lines) => barOf(lines, groove.steps)),
+    light: barOf(groove.light, groove.steps),
+    fill: barOf(groove.fill, groove.steps),
+  }
 
-  cycles.set(groove, cycle)
+  cycles.set(groove, bars)
 
-  return cycle
+  return bars
 }
 
-/**
- * Takes the absolute step, so the caller never tracks where the bar started —
- * and so `variations` can change which hits a step carries without ever
- * touching the indexing that take selection and humanize both read.
- */
 export function hitsAt(
   groove: GrooveDefinition,
   step: number,
   variations = false,
 ): readonly Hit[] {
-  const cycle = cycleFor(groove)
-  const bar = variations ? cycle[barIndexFor(step, groove.steps)] : cycle[0]
-  const inBar = ((step % groove.steps) + groove.steps) % groove.steps
+  const bars = barsFor(groove)
+  const stated = bars.ordinary[phaseFor(step, groove)]
+
+  const marked = [stated, bars.light, stated, bars.fill]
+  const bar = variations ? marked[barIndexFor(step, groove.steps)] : stated
+  const inBar = wrap(step, groove.steps)
 
   return bar[inBar]
 }

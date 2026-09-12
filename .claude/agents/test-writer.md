@@ -58,6 +58,26 @@ allows it, never to weaken the zone.
 it is empty, no such zone exists yet and importing a sibling concern directly is
 correct.
 
+## Comments: a test explains itself through its name
+
+**Write almost none.** The house rule in both `CLAUDE.md` files binds test files
+exactly as it binds source, and test files are where this repo broke it worst.
+
+A comment is earned by a workaround, a platform quirk, or a one-line reference
+to an ADR or spec folder. Nothing else is.
+
+- **The test name carries the explanation.** If you are about to write a comment
+  saying what a case proves, that sentence belongs in the `it(...)` string.
+- **No section-header comments** dividing a file into regions. If a file needs
+  signposting, it needs `describe` blocks or splitting.
+- **Never narrate the arrangement** — no "given a source with three takes", no
+  "now the tempo changes". The code says it.
+- **Never write prose**, and never argue with an earlier version of the test.
+
+**Reasoning goes in `docs/` and the spec folder, not in the source.** A test that
+pins a musical decision references the ADR in one line and pins the value; it
+does not re-argue the decision.
+
 ## What must be tested
 
 - **Every feature must be unit tested.** A feature is not done without tests.

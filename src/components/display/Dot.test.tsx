@@ -4,8 +4,6 @@ import { Dot } from './Dot'
 
 const COLOUR = /^(bg|text|ring|border|outline|shadow|opacity|fill|stroke|from|via|to|accent|decoration|divide|caret)-/
 
-/** Sam's condition is that the downbeat is not distinct by colour alone, so
- *  strip every colour utility and require the remainder to still differ. */
 const shapeOf = (element: Element) =>
   element.className
     .split(/\s+/)
@@ -18,7 +16,6 @@ const sizeOf = (element: Element) =>
 const EMPHASISED = 'One'
 const PLAIN = 'Two'
 
-/** A dot is an `<li>`, so the list it belongs to is what the page gives it. */
 const renderPair = () =>
   render(
     <ol>

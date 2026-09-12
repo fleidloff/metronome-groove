@@ -26,8 +26,6 @@ describe('stepSeconds on the sixteenth grid', () => {
   })
 
   it('spans the 4.5:1 the humanize bound has to survive', () => {
-    // A flat millisecond figure means 2.4% of a step at 40 bpm and 10.8% at
-    // 180, which is why the bound is a fraction of this number.
     expect(stepSeconds(40, STEPS_PER_BAR) / stepSeconds(180, STEPS_PER_BAR)).toBe(
       4.5,
     )
@@ -69,8 +67,6 @@ describe('isQuarter', () => {
   })
 
   it('keeps saying quarter past the end of the first bar', () => {
-    // The scheduler counts absolute steps and never wraps them, so step 64 is
-    // beat 1 of bar 5 and step 66 is not a quarter at all.
     expect(isQuarter(64, STEPS_PER_BAR)).toBe(true)
     expect(isQuarter(66, STEPS_PER_BAR)).toBe(false)
     expect(isQuarter(100, BEATS_PER_BAR)).toBe(true)

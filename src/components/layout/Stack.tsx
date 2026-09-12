@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Space } from '@/components/tokens'
 
-// Tailwind extracts literal class strings from source, so `gap-${gap}` would
-// compile and render while producing no CSS at all.
+// Tailwind extracts literal class strings, so `gap-${gap}` produces no CSS.
 const GAP: Record<Space, string> = {
   0: 'gap-0',
   1: 'gap-1',
