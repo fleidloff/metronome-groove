@@ -38,20 +38,23 @@ Seeded from [docs/music.md](../docs/music.md). Nothing here is decided.
 | Time signature / meter | Four of the thirteen grooves need it | music.md Q5. Building 4/4-only is cheaper and forecloses waltz, 6/8 and odd meters |
 | Accent scheme | Beat 1 against the rest is the minimum useful structure | `cowbell` on 1, `claves` on 2–4 is music.md's first try |
 
-### Practice methods
+### Reference thinning — one row of toggles, not a menu of methods
 
-Each is a way of giving the player *less* reference. Roughly in order of cost.
+**This section was rewritten after `docs/persona.md` was written.** It used to
+list thirteen named practice methods — gap click, displacement, drift test,
+tempo ladder — as features to build. The persona rules that out in as many
+words: *"It is an instrument, not a trainer. No methods, no progression, no
+memory of how they did. The practice techniques exist — they build them by hand
+with the beat toggles, and the app never mentions them."*
 
-| Candidate | Trains | Notes |
+So there is one candidate here, not ten. The methods in
+[docs/music.md](../docs/music.md) §1 stay as **reasoning about why thinning
+matters** — they are not a backlog.
+
+| Candidate | Why | Notes |
 | :-- | :-- | :-- |
-| Subdivision click | Even spacing inside the beat | 8th / 16th / triplet |
-| Backbeat only | Holding 1 and 3 internally | Click on 2 and 4 |
-| One per bar | Bar-length internal time | |
-| Half / double time | Wide or narrow reference | |
-| Gap click | Internal clock over silence | N bars on, N bars off |
-| Drift test | Whether the internal clock held | Click returns after N bars — needs a way to show what drifted |
-| Displacement | Hearing the click as a weak position | music.md calls this the hardest and most useful |
-| Tempo ladder | Technique at a measured tempo | Fixed tempo raised in steps |
+| Beat mute toggles | The whole of reference-thinning, in one row | Tap a beat to mute it for every voice at once. Backbeat-only, one-per-bar and gap click all fall out of this without the app naming any of them. The persona is explicit that muting is per-beat and not per-voice: *"a grid of voices against beats is a drum machine and they did not ask for one"* |
+| Tap tempo | *"not a nice-to-have. It is how an ear-trained player states a tempo"* | The persona ranks this above the slider for stating a tempo by ear |
 
 ### The groove layer
 
@@ -69,6 +72,17 @@ The premise of the project, and the expensive half.
 
 | Candidate | Why | Notes |
 | :-- | :-- | :-- |
-| Persisted settings | Coming back tomorrow to the tempo you left | |
-| Practice session / streak | Turns a tool into a habit | Needs `docs/persona.md` written first — a product call nobody can make on Sam's behalf yet |
-| Credit strings in the UI | CC-BY is an obligation, not a footnote | Blocks shipping anything that renders a sample |
+| Persisted setup | *"Coming back tomorrow costs nothing and starts where they stopped"* | Tempo and toggles in the browser. No account — the persona counts a sign-up as setup before sound |
+| Credit strings in the UI | CC-BY is an obligation, not a footnote | Blocks shipping any MuldjordKit or DRSKit voice. **Not** triggered by claves, which is CC0 |
+
+### Ruled out by the persona
+
+Kept visible so they are not re-proposed as good ideas.
+
+| Not building | Why |
+| :-- | :-- |
+| Streaks, scores, accuracy readouts | *"Being graded… that is homework, and homework is the thing they quit three times."* |
+| Named practice methods or a progression | *"It is an instrument, not a trainer."* |
+| Per-voice mute grid | *"a grid of voices against beats is a drum machine and they did not ask for one."* |
+| An account | *"No account, and nothing to lose."* |
+| Anything in the lead register | *"Sam brings the melody instrument."* |
