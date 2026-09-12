@@ -1,0 +1,4 @@
+# Agent scratch inside a spec folder. The spec folder itself is tracked and
+# permanent; these two are working material for one run.
+.verify/
+.implement/
