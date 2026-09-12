@@ -34,19 +34,23 @@ Seeded from [docs/music.md](../docs/music.md). Nothing here is decided.
 
 ### The spine
 
-| Candidate                                                    | Why | Notes |
-|:-------------------------------------------------------------| :-- | :-- |
-| ~~Next.js app scaffold~~                                     | — | Shipped as V1 |
-| ~~Synthesized click~~                                        | — | Shipped as V2, with a claves sample rather than synthesis |
-| ~~Tempo control~~                                            | — | Shipped as V2: a 40–180 bpm slider |
-| ~~Tap tempo~~                                                | — | Shipped as V3 |
-| sync display with external audio with mic                    | — |  |
-| fill-ins for grooves every x bars                            | — |  |
-| increase tempo by 5 every time you stop and resume           | — |  |
-| Bluetooth remote — *specced as [V4](4-bluetooth-tap-tempo/)* | Set the tempo without touching the phone | **Leads with a probe**: a diagnostic page run on a phone paired to a real speaker, measuring what a double press actually sends and where the firmware starts swallowing presses. Its answer decides whether V4 has a tap-tempo half or ships play/stop only |
-| Tempo control                                                | A metronome's one required input | music.md Q2 — continuous or a ladder — decides whether anything can be pre-rendered |
-| Time signature / meter                                       | Four of the thirteen grooves need it | music.md Q5. Building 4/4-only is cheaper and forecloses waltz, 6/8 and odd meters |
-| Accent scheme                                                | Beat 1 against the rest is the minimum useful structure | `cowbell` on 1, `claves` on 2–4 is music.md's first try |
+| Candidate                                                                              | Why | Notes |
+|:---------------------------------------------------------------------------------------| :-- | :-- |
+| ~~Next.js app scaffold~~                                                               | — | Shipped as V1 |
+| ~~Synthesized click~~                                                                  | — | Shipped as V2, with a claves sample rather than synthesis |
+| ~~Tempo control~~                                                                      | — | Shipped as V2: a 40–180 bpm slider |
+| ~~Tap tempo~~                                                                          | — | Shipped as V3 |
+| sync display with external audio with mic                                              | — |  |
+| fill-ins for grooves every x bars                                                      | — |  |
+| increase tempo by 5 every time you stop and resume                                     | — |  |
+| groove variations (after 2 and 4 bars, still displayed as 1 bar, optional, selectable) | — |  |
+| optional count-in 4 clicks for grooves                                                 | — |  |
+| disable single instruments from a groove (add icons for the instruments)               | — |  |
+| add more grooves                                                                       | — |  |
+| Bluetooth remote — *specced as [V4](4-bluetooth-tap-tempo/)*                           | Set the tempo without touching the phone | **Leads with a probe**: a diagnostic page run on a phone paired to a real speaker, measuring what a double press actually sends and where the firmware starts swallowing presses. Its answer decides whether V4 has a tap-tempo half or ships play/stop only |
+| Tempo control                                                                          | A metronome's one required input | music.md Q2 — continuous or a ladder — decides whether anything can be pre-rendered |
+| Time signature / meter                                                                 | Four of the thirteen grooves need it | music.md Q5. Building 4/4-only is cheaper and forecloses waltz, 6/8 and odd meters |
+| Accent scheme                                                                          | Beat 1 against the rest is the minimum useful structure | `cowbell` on 1, `claves` on 2–4 is music.md's first try |
 
 ### Reference thinning — one row of toggles, not a menu of methods
 
