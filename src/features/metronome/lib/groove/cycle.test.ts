@@ -1,14 +1,26 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { Hit } from '../transport/source'
+import type { Hit, SourceId } from '../transport/source'
 import * as cycle from './cycle'
 import { BARS_PER_CYCLE, barIndexFor, hitsAt } from './cycle'
 import type { GrooveDefinition, Line } from './grooves/definition'
 import { sixInvariantViolations, undeclaredVoices } from './invariants'
 import { BOSSA_NOVA } from './grooves/bossaNova'
 import { ROCK } from './grooves/rock'
+import { SHUFFLE } from './grooves/shuffle'
 import { STRAIGHT_FUNK } from './grooves/straightFunk'
+
+/** Typed as `useClickTransport`'s `GROOVES` is, so a groove the app can select
+ *  and this file does not run the rulebook over is a compile error. */
+const EVERY_GROOVE: Record<Exclude<SourceId, 'click'>, GrooveDefinition> = {
+  'bossa-nova': BOSSA_NOVA,
+  rock: ROCK,
+  shuffle: SHUFFLE,
+  'straight-funk': STRAIGHT_FUNK,
+}
+
+const EVERY_GROOVE_BY_NAME = Object.entries(EVERY_GROOVE)
 
 const FIXTURE: GrooveDefinition = {
   id: 'straight-funk',
@@ -281,12 +293,18 @@ describe("ADR 0010's six invariants, as a check any groove can run", () => {
   })
 })
 
+describe('the rulebook holds for every groove the app can select', () => {
+  it.each(EVERY_GROOVE_BY_NAME)('keeps all six invariants in %s', (_id, groove) => {
+    expect(sixInvariantViolations(groove)).toEqual([])
+  })
+
+  it.each(EVERY_GROOVE_BY_NAME)('answers to the id it is keyed by, in %s', (id, groove) => {
+    expect(groove.id).toBe(id)
+  })
+})
+
 describe('a groove declares every voice it plays', () => {
-  it.each([
-    ['straight funk', STRAIGHT_FUNK],
-    ['rock', ROCK],
-    ['bossa nova', BOSSA_NOVA],
-  ])('holds for %s', (_name, groove) => {
+  it.each(EVERY_GROOVE_BY_NAME)('holds for %s', (_id, groove) => {
     expect(undeclaredVoices(groove)).toEqual([])
   })
 

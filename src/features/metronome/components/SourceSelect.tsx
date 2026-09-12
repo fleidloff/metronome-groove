@@ -6,6 +6,7 @@ const OPTIONS: readonly SelectOption<SourceId>[] = [
   { value: 'click', label: metronome.click },
   { value: 'bossa-nova', label: metronome.bossaNova },
   { value: 'rock', label: metronome.rock },
+  { value: 'shuffle', label: metronome.shuffle },
   { value: 'straight-funk', label: metronome.straightFunk },
 ]
 

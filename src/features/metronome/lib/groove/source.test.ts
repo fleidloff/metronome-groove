@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
 import type { Hit, Source } from '../transport/source'
 import { hitsAt } from './cycle'
+import { BOSSA_NOVA } from './grooves/bossaNova'
+import { ROCK } from './grooves/rock'
+import { SHUFFLE } from './grooves/shuffle'
 import {
   STRAIGHT_FUNK,
   STRAIGHT_FUNK_HUMANIZE,
   STRAIGHT_FUNK_SEED,
 } from './grooves/straightFunk'
-import { timingBound } from './humanize'
+import { timingBound, timingOffset } from './humanize'
 import type { KitVoiceName } from './kit'
 import { sampleUrlFor } from './kit'
 import { createGrooveSource } from './source'
@@ -193,5 +196,67 @@ describe('the groove source, over straight funk', () => {
 
     expect(new Set(absolute).size).toBe(FILL_BAR_STARTS.length)
     expect(new Set(phraseLocal).size).toBe(1)
+  })
+})
+
+/**
+ * The one line joining the warp to the groove that needs it. `createGrooveSource`
+ * computes `stride` inline, and every other test here runs straight funk, whose
+ * stride is 1 — so a literal `1` in its place passes the whole suite while every
+ * shuffle in the app silently stops swinging. ADR 0014 says that failure has no
+ * other catch.
+ *
+ * Swing is isolated by differencing against the same groove at swing 0: seed,
+ * voice and step are identical, so humanize cancels exactly.
+ */
+describe('the stride the source hands the warp', () => {
+  const PROBE: Hit = { voice: 'hatClosed', velocity: 0.78 }
+  const STEPS_PER_BEAT = STEPS_PER_BAR / 4
+
+  const soundsAtBeat = (groove: typeof SHUFFLE, step: number) => {
+    const swung = createGrooveSource(groove)
+    const straight = createGrooveSource({ ...groove, swing: 0 })
+
+    const delta =
+      swung.displace!(PROBE, step, SECONDS_PER_STEP) -
+      straight.displace!(PROBE, step, SECONDS_PER_STEP)
+
+    return step / STEPS_PER_BEAT + delta / (STEPS_PER_BEAT * SECONDS_PER_STEP)
+  }
+
+  /** `specs/12-shuffle/tech-spec.md` § Where the warp lands, verified. */
+  it.each([
+    [0, 'beat 1', 0],
+    [2, 'the third triplet of beat 1', 2 / 3],
+    [8, 'beat 3', 2],
+    [9, 'beat 3 + 1/3', 2 + 1 / 3],
+    [10, 'beat 3 + 2/3', 2 + 2 / 3],
+    [13, 'beat 4 + 1/3', 3 + 1 / 3],
+    [15, 'beat 4 + 5/6', 3 + 5 / 6],
+  ])('sounds shuffle step %i at %s, which needs stride 2', (step, _reads, beat) => {
+    expect(soundsAtBeat(SHUFFLE, step as number)).toBeCloseTo(beat as number, 12)
+  })
+
+  it('reaches a position an unwarped grid cannot, which is what the fill is built on', () => {
+    expect(soundsAtBeat(SHUFFLE, 2)).not.toBeCloseTo(2 / 4 + 0.25, 6)
+  })
+
+  /**
+   * Against humanize alone rather than against a swing-0 twin: rock already
+   * declares swing 0, so differencing it against itself asserts nothing and
+   * nothing would ever report it broken.
+   */
+  it('leaves a straight groove alone at stride 2, which is rock and bossa', () => {
+    for (const groove of [ROCK, BOSSA_NOVA]) {
+      const source = createGrooveSource(groove)
+
+      expect(groove.steps / groove.subdivision).toBe(2)
+
+      for (let step = 0; step < STEPS_PER_BAR; step += 1) {
+        expect(source.displace!(PROBE, step, SECONDS_PER_STEP)).toBe(
+          timingOffset(groove.humanize, groove.seed, PROBE.voice, step, SECONDS_PER_STEP),
+        )
+      }
+    }
   })
 })

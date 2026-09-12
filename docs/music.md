@@ -89,7 +89,7 @@ not the range the style is played at.
 | Straight 8th rock | 4/4 | 80–140 | 8 | 0 | The baseline. Backbeat, nothing else |
 | 16th funk | 4/4 | 90–110 | 16 | 0–0.2 | Sixteenth placement, ghost notes |
 | Half-time | 4/4 | 60–85 | 16 | 0–0.3 | Wide backbeat, long empty spaces |
-| Shuffle | 4/4 | 75–95 | 8 | 0.6–0.67 | Triplet feel, skipping the middle triplet |
+| Shuffle | 4/4 | 75–95 | 8 | **2/3** (V12) | Triplet feel, skipping the middle triplet |
 | Half-time shuffle | 4/4 | 80–100 | 16 | 0.55–0.65 | Swung 16ths with ghosts. The hardest one here |
 | Jazz / ride | 4/4 | 100–200 | 8 | 0.55–0.65 | Riding a cymbal, feathered kick |
 | Bossa nova | 4/4 | 120–140 | 16 | 0 | Clave against a straight kit |
@@ -192,11 +192,18 @@ snare      8
 kick       0 10
 ```
 
-**Shuffle** — same notes as rock, played at swing 0.64 on the 8th grid
+**Shuffle** — V12 shipped, and **not** as this block used to write it. It read
+*"same notes as rock, played at swing 0.64 on the 8th grid"*, which would have
+made rock and shuffle the same groove at two values of a number the player
+cannot see. The kick on step 10 is the note a straight groove does not have:
+swung, it sounds at 2/3 of beat 3, so the lowest voice in the kit states the
+third triplet. Swing is **2/3**, the exact 2:1 long-short — 0.64 is 4.7 ms off
+the triplet at 85 bpm, inside the humanize noise, so it neither is the triplet
+nor audibly isn't.
 ```
-hatClosed  0 2 4 6 8 10 12 14
+hatClosed  0 2 4 6 8 10 12 14   (0.90 on the quarters, 0.78 between)
 snare      4 12
-kick       0 8
+kick       0 8 10
 ```
 
 **Bossa nova** — the clave carries it, the kit stays flat
@@ -298,8 +305,9 @@ the audio wherever it goes.
 
 ## 4. What the pack can and cannot play
 
-**Built so far:** 16th funk (V6) and straight 8th rock (V10), both on the same
-four voices and the same 22 files.
+**Built so far:** 16th funk (V6), straight 8th rock (V10), bossa nova (V11) and
+shuffle (V12). Funk, rock and shuffle share the same four voices and the same 22
+files; bossa adds the clave.
 
 **Can play, today:** straight rock, 16th funk, half-time, shuffle, half-time
 shuffle, jazz ride, boom-bap, second line, bossa nova. That is nine of the

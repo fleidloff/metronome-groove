@@ -17,6 +17,7 @@ export type MetronomeSnippets = {
   click: string
   bossaNova: string
   rock: string
+  shuffle: string
   straightFunk: string
   fills: string
   countIn: string

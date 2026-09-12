@@ -13,6 +13,7 @@ export const metronome = {
   click: 'Click',
   bossaNova: 'Bossa nova',
   rock: 'Rock',
+  shuffle: 'Shuffle',
   straightFunk: 'Straight funk',
   fills: 'Fills',
   countIn: 'Count-in',

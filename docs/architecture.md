@@ -108,13 +108,28 @@ worth knowing about: `cycle.ts`, `source.ts`, `invariants.ts`, `humanize.ts`,
 `swing.ts` and `kit.ts` are machinery that plays any groove, and `grooves/` holds
 one data file per groove and nothing else
 ([ADR 0012](adr/0012-a-groove-is-data.md)). A new groove is a file in `grooves/`
-plus an entry in the transport's registry; it touches no machinery. The arrow
-inside the folder runs one way — machinery never imports a definition, except
-that `source.ts` and `cycle.ts` take one as an argument.
+plus an entry in the transport's registry. The arrow inside the folder runs one
+way — machinery never imports a definition, except that `source.ts` and
+`cycle.ts` take one as an argument.
 
-One exception is drawn rather than hidden: `grooves/rock.ts` imports
-`grooves/straightFunk.ts` for the shared humanize record. When a third groove
-wants it, the record moves to `grooves/shared.ts`.
+**"It touches no machinery" was the claim here until V12, and the shuffle broke
+it.** A groove costs nothing in machinery while it uses a mechanism that already
+works. Shuffle was the first groove to turn swing on, and swing had never run at
+a non-zero value, so it was the first to find one that did not —
+[ADR 0014](adr/0014-swing-warps-the-grid.md). The rule that survives is narrower
+and more useful: **a groove that reaches for a mechanism nothing has exercised
+is buying that mechanism, not just adding a file.**
+
+One exception is drawn rather than hidden: a groove imports
+`grooves/straightFunk.ts` for the shared humanize record, which is not funk's
+and has only ever been kept under funk's name.
+
+**That trigger has fired and the move is outstanding.** The rule here read
+*"when a third groove wants it, the record moves to `grooves/shared.ts`"*.
+Rock, bossa and shuffle all import it, so the third arrived in V11 and the
+fourth in V12, and neither change made the move. It is recorded rather than done
+quietly: the move is a rename across four definitions and their tests, and it
+belongs to its own change.
 
 **`lib/countIn/` is the second sideways arrow**, and it was weighed rather than
 added quietly. It reaches into `lib/click/` for `CLICK_PATTERN` because a

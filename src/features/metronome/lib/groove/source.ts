@@ -21,7 +21,7 @@ export function createGrooveSource(
     humanize,
     hitsAt: (step) => hitsAt(groove, step, variations()),
     displace: (hit, step, stepSeconds) =>
-      swingOffset(swing, step, stepSeconds) +
+      swingOffset(swing, step, stepSeconds, groove.steps / groove.subdivision) +
       timingOffset(humanize, seed, hit.voice, step, stepSeconds),
     trim: (hit, step) => gainTrim(humanize, seed, hit.voice, step),
     /** ADR 0011 */

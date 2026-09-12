@@ -593,10 +593,11 @@ describe(app.name, () => {
     const GROOVE = 'straight-funk'
     const ROCK = 'rock'
     const BOSSA = 'bossa-nova'
+    const SHUFFLE = 'shuffle'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
 
-    it('offers the click and all three grooves, with the click already chosen', () => {
+    it('offers the click and all four grooves, with the click already chosen', () => {
       render(<Metronome />)
 
       expect(
@@ -605,9 +606,20 @@ describe(app.name, () => {
         metronome.click,
         metronome.bossaNova,
         metronome.rock,
+        metronome.shuffle,
         metronome.straightFunk,
       ])
       expect(picker()).toHaveValue('click')
+    })
+
+    it('asks for the shuffle the moment it is chosen, like any other groove', () => {
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: SHUFFLE } })
+
+      expect(select).toHaveBeenCalledWith(SHUFFLE)
+      expect(picker()).toHaveValue(SHUFFLE)
     })
 
     it('asks for bossa the moment it is chosen, like any other groove', () => {
@@ -877,6 +889,21 @@ describe(app.name, () => {
       ).toHaveValue('rock')
     })
 
+    it('tells the transport about a restored shuffle, which SOURCE_IDS is what validates', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: 'shuffle' }),
+      )
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(select).toHaveBeenCalledWith('shuffle')
+      expect(select).not.toHaveBeenCalledWith('click')
+      expect(
+        screen.getByRole('combobox', { name: metronome.sound }),
+      ).toHaveValue('shuffle')
+    })
+
     it('tells the transport about a restored bossa, which SOURCE_IDS is what validates', () => {
       window.localStorage.setItem(
         SETUP_KEY,
@@ -924,6 +951,7 @@ describe(app.name, () => {
   describe('the fills toggle', () => {
     const GROOVE = 'straight-funk'
     const ROCK = 'rock'
+    const SHUFFLE = 'shuffle'
     const BOSSA = 'bossa-nova'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
@@ -954,13 +982,18 @@ describe(app.name, () => {
       expect(box()).toBeNull()
     })
 
-    it('is one box for every groove, so unticking it on rock holds on funk', () => {
+    it('is one box for every groove, so unticking it on rock holds on shuffle and funk', () => {
       const { transport, setFills } = fakeTransport()
       render(<Metronome transport={transport} />)
 
       pick(ROCK)
       expect(box()).toBeChecked()
       fireEvent.click(box()!)
+      expect(setFills).toHaveBeenLastCalledWith(false)
+
+      pick(SHUFFLE)
+
+      expect(box()).not.toBeChecked()
       expect(setFills).toHaveBeenLastCalledWith(false)
 
       pick(GROOVE)

@@ -806,6 +806,7 @@ describe('what the transport builds for real', () => {
 
   const FUNK_BANK = bankOf('kick', 'snare', 'hatClosed', 'hatOpen')
   const BOSSA_BANK = bankOf('kick', 'snare', 'hatClosed')
+  const ROCK_BANK = bankOf('kick', 'snare', 'hatClosed', 'hatOpen')
 
   const sorted = (urls: readonly string[]) => [...urls].sort()
 
@@ -980,6 +981,38 @@ describe('what the transport builds for real', () => {
     expect(device.fetched.length).toBe(decoded)
   })
 
+  it('fetches nothing further when shuffle follows rock', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('rock'))
+    await loaded()
+    const held = [...device.fetched]
+    expect(sorted(held)).toEqual(sorted(ROCK_BANK))
+
+    act(() => transport().select?.('shuffle'))
+    await loaded()
+
+    // ADR 0013: a device is keyed by its bank, and the two grooves resolve to
+    // the same one.
+    expect(sorted(device.fetched)).toEqual(sorted(held))
+  })
+
+  it('fetches nothing further when rock follows shuffle', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('shuffle'))
+    await loaded()
+    const held = [...device.fetched]
+    expect(sorted(held)).toEqual(sorted(ROCK_BANK))
+
+    act(() => transport().select?.('rock'))
+    await loaded()
+
+    expect(sorted(device.fetched)).toEqual(sorted(held))
+  })
+
   it('fetches the voices funk declares, and no rim file', async () => {
     const device = fakeDevice()
     const { transport } = mount(buildRealAudio)
@@ -1037,11 +1070,18 @@ describe('what the transport builds for real', () => {
     expect(sorted(device.fetched)).toEqual(sorted(FUNK_BANK))
   })
 
-  it('fetches no rim file on any path through the four sources', async () => {
+  it('fetches no rim file on any path through every source', async () => {
     const device = fakeDevice()
     const { transport } = mount(buildRealAudio)
 
-    for (const id of ['bossa-nova', 'straight-funk', 'rock', 'click', 'bossa-nova'] as const) {
+    for (const id of [
+      'bossa-nova',
+      'straight-funk',
+      'rock',
+      'shuffle',
+      'click',
+      'bossa-nova',
+    ] as const) {
       act(() => transport().select?.(id))
       await loaded()
     }

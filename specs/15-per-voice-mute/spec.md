@@ -1,7 +1,7 @@
 # V15. Per-voice mute
 
 Started 2026-09-12 · `/vibe-with-docs`
-**Phase:** tech spec
+**Phase:** ready to build — `/implement-vibe-with-docs 15`
 
 ## What
 
@@ -143,6 +143,24 @@ Started 2026-09-12 · `/vibe-with-docs`
 
 ## Open
 
-* Nothing in the product. `tech-spec.md` carries the build questions: where the
-  glyphs live given that `src/components/` forbids a domain word in a primitive's
-  name, and the stored shape for a per-groove mute set.
+* Nothing. Both files are settled.
+
+## Size
+
+`/vibe-with-docs` §7, four questions:
+
+1. `## Done when` five bullets or fewer? **Yes** — five.
+2. At most two or three concern folders? **No.** It touches `lib/mute/` (new),
+   `lib/setup/`, `lib/groove/`, the slice's `components/`, and
+   `src/components/` — five. What it costs: a revert is still one commit, but
+   the change cannot be reviewed folder by folder, and the design-system half
+   (Track C) is independently useful in a way the rest is not.
+3. Leaves everything `docs/music.md` marks as fixed alone? **Yes** — no figure,
+   velocity, seed or humanize bound moves.
+4. One `git revert` rolls it back? **Yes.**
+
+Question 2 fails. The honest reading of §7 is that this is size without
+uncertainty — every requirement is decided and written down above, and the work
+is simply wide because a new user-facing control needs a primitive, a store, a
+filter and a row. **Not split.** Splitting Track C out as its own change would
+ship three glyphs nothing renders.

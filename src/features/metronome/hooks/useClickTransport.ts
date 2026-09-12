@@ -13,6 +13,7 @@ import { createCountInSource } from '../lib/countIn/source'
 import { BOSSA_NOVA } from '../lib/groove/grooves/bossaNova'
 import type { GrooveDefinition } from '../lib/groove/grooves/definition'
 import { ROCK } from '../lib/groove/grooves/rock'
+import { SHUFFLE } from '../lib/groove/grooves/shuffle'
 import { STRAIGHT_FUNK } from '../lib/groove/grooves/straightFunk'
 import { createGrooveSource } from '../lib/groove/source'
 import { createAudioClock, type VoiceBank } from '../lib/transport/audioClock'
@@ -141,6 +142,7 @@ const growKitBank = (context: AudioContext, bank: VoiceBank) => {
 const GROOVES: Record<Exclude<SourceId, 'click'>, GrooveDefinition> = {
   'bossa-nova': BOSSA_NOVA,
   rock: ROCK,
+  shuffle: SHUFFLE,
   'straight-funk': STRAIGHT_FUNK,
 }
 

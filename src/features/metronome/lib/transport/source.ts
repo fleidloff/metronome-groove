@@ -2,7 +2,7 @@ import type { Velocity } from '@/lib/velocity'
 
 export type VoiceName = 'claves' | 'kick' | 'snare' | 'hatClosed' | 'hatOpen' | 'rim'
 
-export const SOURCE_IDS = ['click', 'bossa-nova', 'rock', 'straight-funk'] as const
+export const SOURCE_IDS = ['click', 'bossa-nova', 'rock', 'shuffle', 'straight-funk'] as const
 
 export type SourceId = (typeof SOURCE_IDS)[number]
 
