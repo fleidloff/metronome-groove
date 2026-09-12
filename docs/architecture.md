@@ -63,24 +63,32 @@ Every pair not drawn is an error.
 
 The graph above is between directories. Inside a feature folder there is a
 second graph that the directories do not show: which of the slice's concerns may
-reach which. **This project has not drawn one yet**, and that is a judgement
-rather than an omission: `src/features/metronome/` now holds `components/`,
-`hooks/` and one concern folder, `lib/click/`. One concern is not a graph.
+reach which. **V3 pulled that trigger**: the slice now holds two concern
+folders, `lib/click/` and `lib/tap/`, which is exactly what this section said
+would mean it was time to draw one. So here it is, small because the graph is
+small.
 
-The trigger for drawing it is a **second** concern folder — the moment a
-question like "may the groove reach the click?" has an answer worth writing
-down. Until then the arrows are:
+The arrows, each with an import behind it:
 
 | Arrow | Behind it |
 | :-- | :-- |
 | `components/` → `lib/click/` | the composer reads `tempo.ts`'s range |
+| `components/` → `lib/tap/` | the composer records taps and commits on the silence |
+| `lib/tap/` → `lib/click/` | `tapTempo.ts` reads `MIN_BPM`/`MAX_BPM` to refuse a tempo it cannot play |
 | `hooks/` → `lib/click/` | `useClickTransport.ts` builds the scheduler and the audio clock |
 | `hooks/` → `components/` | **type-only**: the hook imports `Transport` from `Metronome.tsx`, pointing at its own consumer. No zone forbids it and it erases at build, but the contract would sit better in `lib/click/` |
 | `lib/click/` → `@/lib/velocity` | gain per beat, and nothing else in the app |
 | `components/`, `lib/` → `@/lib/snippets` | every word the user is shown |
 
-Zone 6 enforces the one that matters: nothing in `lib/click/` reaches back up
-into UI, a hook or the store.
+Zone 6 enforces the one that matters: nothing in `lib/` reaches back up into
+UI, a hook or the store.
+
+**`lib/tap/` → `lib/click/` is the first arrow between two concern folders, and
+nothing guards its direction.** The reverse — `lib/click/` importing `lib/tap/`
+— would be wrong (the scheduler has no business knowing how a tempo was
+arrived at) and would pass lint today. That is a review-only rule until a
+second such pair makes a zone worth writing, which is the same measured-growth
+test a door has to meet.
 
 `lib/click/` has no `index.ts` and has not earned one — its modules are imported
 directly, which

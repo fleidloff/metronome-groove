@@ -98,7 +98,45 @@ whole point of choosing a different instrument.
 
 ## Epics
 
+### Epic 0 — the probe
+
+**Runs first, alone, and gates everything below.** No other track starts until
+it has reported, because its answer decides whether Epic 1 has a tapping half
+at all.
+
+#### Track P — the diagnostic page
+
+* **Role:** `implementer`
+* **Owns:** `public/v4-probe.html`
+* **Needs to start:** nothing
+
+One self-contained HTML file — inline style, inline script, no imports, no
+build step, outside `src/` so no lint zone binds it. It renders a log and
+almost nothing else.
+
+1. Register `play`, `pause`, `nexttrack`, `previoustrack` and `stop` handlers,
+   each in its own `try`/`catch`, and print which ones the platform accepted.
+2. Run with an `AudioContext` only, then with a silent looping `<audio>`, and
+   report which combination actually receives a button press. **This is the
+   documented uncertainty from `spec.md`** — settle it by observation.
+3. Log every action that arrives with `performance.now()`, the gap in
+   milliseconds since the previous one, and the bpm that gap implies.
+4. Show the last dozen events at a size readable on a phone across a room,
+   because the phone is in your hand and the speaker is what you are pressing.
+
+**There is no test for this file and there should not be.** It asserts nothing;
+it reports what hardware did. The build's checks do not cover it and the suite
+never loads it.
+
+**Done when:** a person has run it on a phone paired to a speaker, pressed the
+button in the four shapes `spec.md` names, and written the numbers into
+`spec.md` under `## What the probe found`.
+
 ### Epic 1 — the speaker as a remote
+
+**Gated on Epic 0.** If the probe says per-beat tapping does not survive, Tracks
+A, C and D shrink: no tap delegation, no mode machine, no cowbell — Track B
+alone, plus play/pause wiring, and an ADR recording the finding.
 
 #### Track A — the mode machine
 
@@ -162,7 +200,9 @@ over the click at practice volume without being startling.
 
 ## Waves
 
-* **Wave 1 (parallel):** Track A, Track B, Track C
+* **Wave 0:** Track P, alone. **Stop here and report.** The probe's answer is
+  the user's to read before anything else is dispatched.
+* **Wave 1 (parallel):** Track A, Track B, Track C — scope depends on Wave 0
 * **Wave 2:** Track D — needs all three
 
 ## Checks
@@ -175,7 +215,8 @@ over the click at practice volume without being startling.
 
 | Risk | What holds it |
 | :-- | :-- |
-| **Per-beat tapping is eaten by the firmware** | This is the change's open question rather than a risk to mitigate. `## Done when` 5 makes the finding a deliverable, and per-bar is a one-line change to the tap unit if it fails |
+| **Per-beat tapping is eaten by the firmware** | **Epic 0 answers this before anything is built.** It stopped being a risk the moment it became the first thing the change does; if the answer is no, V4 ships play/stop only and Epic 1 shrinks rather than being rewritten |
+| The probe itself is wrong, and we build on a bad reading | It reports raw numbers — action names and millisecond gaps — rather than a verdict. A reader can disagree with the conclusion while trusting the log |
 | A double press may not produce `nexttrack` on every device | `supported` reports what bound; the hardware check covers what actually fires. If nothing arrives, the mode is unreachable and that is the finding |
 | The lock-screen notification surprises the player | Named in `## Decided` as a consequence, not a defect. Worth a look during the hardware check |
 | Another audio app stops the metronome | Same — inherent to owning a media session |

@@ -1,7 +1,7 @@
 # V2. Simple 4/4 metronome
 
 Started 2026-09-12 · `/vibe-with-docs`
-**Phase:** ready to build — `/implement-vibe-with-docs 2`
+**Phase:** ✅ shipped 2026-09-12 — see [features.md](../features.md)
 
 ## What
 

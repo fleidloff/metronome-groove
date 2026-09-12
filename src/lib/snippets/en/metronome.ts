@@ -8,4 +8,5 @@ export const metronome = {
   bar: 'Bar',
   beatName: ({ beat }) => `Beat ${beat}`,
   downbeatName: ({ beat }) => `Beat ${beat}, downbeat`,
+  tap: 'Tap',
 } satisfies MetronomeSnippets

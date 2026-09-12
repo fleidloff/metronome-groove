@@ -17,4 +17,5 @@ export type MetronomeSnippets = {
   bar: string
   beatName: (args: { beat: number }) => string
   downbeatName: (args: { beat: number }) => string
+  tap: string
 }

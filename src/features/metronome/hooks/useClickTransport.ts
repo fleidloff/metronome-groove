@@ -27,6 +27,11 @@ export type Audio = {
  */
 export type AudioFactory = (bpm: number) => Promise<Audio>
 
+/**
+ * The transport plus its third state. `suspend` puts the click between running
+ * and stopped — silent, but remembered — so a tapped tempo can bring it back
+ * on its own rather than asking the player to press start a second time.
+ */
 const buildRealAudio: AudioFactory = async (bpm) => {
   const context = new AudioContext()
   const response = await fetch(CLAVES_SAMPLE_URL)
@@ -71,8 +76,15 @@ export function useClickTransport(
     pending: [] as Beat[],
     listeners: new Set<(beat: number) => void>(),
     bpm: 120,
-    /** Bumped by stop and by unmount. An async start that returns to find its
-     *  generation stale undoes its own work rather than leaving things run. */
+    /** Whether the player has asked for a click, which is not the same as the
+     *  scheduler running: a start still loading its device counts. */
+    running: false,
+    /** Set by `suspend` only when it found a click to silence. It is the whole
+     *  of `resume`'s permission to sound. */
+    suspended: false,
+    /** Bumped by stop, by suspend and by unmount. An async start that returns
+     *  to find its generation stale undoes its own work rather than leaving
+     *  things run. */
     generation: 0,
   })
 
@@ -86,6 +98,8 @@ export function useClickTransport(
       live.timer = null
       live.frame = null
       live.pending = []
+      live.running = false
+      live.suspended = false
       live.audio?.scheduler.stop()
       live.audio?.clock.stopSounding()
       void live.audio?.context.close()
@@ -159,43 +173,79 @@ export function useClickTransport(
       return attempt
     }
 
+    /**
+     * Everything a run needs, shared by `start` and `resume`. A resume is a
+     * start the player did not have to press — the only difference is what
+     * decides it may happen.
+     */
+    const begin = (next: number) => {
+      live.bpm = clampTempo(next)
+      live.running = true
+      const mine = live.generation
+
+      void ensureAudio(mine)
+        .then(async (ready) => {
+          if (live.generation !== mine) return
+          if (ready.context.state === 'suspended') await ready.context.resume()
+          if (live.generation !== mine) return
+
+          ready.scheduler.setTempo(live.bpm)
+          ready.scheduler.start()
+          ready.scheduler.tick()
+
+          if (live.timer === null) {
+            live.timer = setInterval(() => ready.scheduler.tick(), TICK_MS)
+          }
+          if (live.frame === null) drainOnFrame()
+        })
+        .catch((reason: unknown) => {
+          live.loading = null
+          if (live.generation !== mine) return
+          live.running = false
+          stopDriving()
+
+          // A device that could not be built must not fail silently: the
+          // button says Start and nothing clicks, which reads as a broken
+          // app rather than a broken file.
+          onFailure(reason)
+        })
+    }
+
+    /**
+     * Silences the scheduler and cuts the drivers, and bumps the generation so
+     * a start still in flight cannot queue a beat after it.
+     */
+    const silence = () => {
+      live.generation += 1
+      stopDriving()
+      live.audio?.scheduler.stop()
+      live.audio?.clock.stopSounding()
+    }
+
     return {
       start(next: number) {
-        live.bpm = clampTempo(next)
-        const mine = live.generation
-
-        void ensureAudio(mine)
-          .then(async (ready) => {
-            if (live.generation !== mine) return
-            if (ready.context.state === 'suspended') await ready.context.resume()
-            if (live.generation !== mine) return
-
-            ready.scheduler.setTempo(live.bpm)
-            ready.scheduler.start()
-            ready.scheduler.tick()
-
-            if (live.timer === null) {
-              live.timer = setInterval(() => ready.scheduler.tick(), TICK_MS)
-            }
-            if (live.frame === null) drainOnFrame()
-          })
-          .catch((reason: unknown) => {
-            live.loading = null
-            if (live.generation !== mine) return
-            stopDriving()
-
-            // A device that could not be built must not fail silently: the
-            // button says Start and nothing clicks, which reads as a broken
-            // app rather than a broken file.
-            onFailure(reason)
-          })
+        live.suspended = false
+        begin(next)
       },
 
       stop() {
-        live.generation += 1
-        stopDriving()
-        live.audio?.scheduler.stop()
-        live.audio?.clock.stopSounding()
+        live.running = false
+        live.suspended = false
+        silence()
+      },
+
+      suspend() {
+        // Tapping a tempo with the click off must not arm a resume.
+        if (!live.running) return
+        live.running = false
+        live.suspended = true
+        silence()
+      },
+
+      resume(next: number) {
+        if (!live.suspended) return
+        live.suspended = false
+        begin(next)
       },
 
       setTempo(next: number) {

@@ -20,6 +20,7 @@ in either table.
 
 | N | Title | Shipped | What landed |
 | :-- | :-- | :-- | :-- |
+| [3](3-tap-tempo/) | Tap tempo | 2026-09-12 | Tap a tempo on screen: the click goes quiet while you tap and returns at the new tempo when you stop. No tap count — the tapping commits when it stops, after two beats of whatever was tapped (two seconds flat while there is only one tap). Shares one value with the slider. |
 | [2](2-simple-4-4-metronome/) | Simple 4/4 metronome | 2026-09-12 | A claves click scheduled on the audio clock: start/stop, a 40–180 bpm slider, four beat dots, and an accent on beat 1 driven by a reusable velocity curve that future grooves share. Compensates the sample's 8.3 ms lead-in. Also moved every user-facing word into `src/lib/snippets/`. Produced [ADR 0003](../docs/adr/0003-snippets.md). |
 | [1](1-next-app-scaffold/) | Next.js app scaffold | 2026-09-12 | Next 16 / React 19 / TypeScript / Tailwind v4, Vitest + Testing Library, and the import graph turned from a description into an enforced, tested fact. One stubbed `metronome` slice reached through its `index.ts`. Produced [ADR 0001](../docs/adr/0001-enforced-import-graph.md) and [ADR 0002](../docs/adr/0002-tailwind-v4.md). |
 
@@ -36,7 +37,8 @@ Seeded from [docs/music.md](../docs/music.md). Nothing here is decided.
 | ~~Next.js app scaffold~~ | — | Shipped as V1 |
 | ~~Synthesized click~~ | — | Shipped as V2, with a claves sample rather than synthesis |
 | ~~Tempo control~~ | — | Shipped as V2: a 40–180 bpm slider |
-| Tap tempo — *the known debt from V2* | Sam: the slider "costs me the reason I opened the tab about half the time" | `docs/persona.md` ranks it above the slider for stating a tempo by ear. Deferred from V2 deliberately; it carries its own decisions (how many taps average, what a stray tap does, whether it works while running) |
+| ~~Tap tempo~~ | — | Shipped as V3 |
+| Bluetooth remote — *specced as [V4](4-bluetooth-tap-tempo/)* | Set the tempo without touching the phone | **Leads with a probe**: a diagnostic page run on a phone paired to a real speaker, measuring what a double press actually sends and where the firmware starts swallowing presses. Its answer decides whether V4 has a tap-tempo half or ships play/stop only |
 | Tempo control | A metronome's one required input | music.md Q2 — continuous or a ladder — decides whether anything can be pre-rendered |
 | Time signature / meter | Four of the thirteen grooves need it | music.md Q5. Building 4/4-only is cheaper and forecloses waltz, 6/8 and odd meters |
 | Accent scheme | Beat 1 against the rest is the minimum useful structure | `cowbell` on 1, `claves` on 2–4 is music.md's first try |
@@ -57,7 +59,6 @@ matters** — they are not a backlog.
 | Candidate | Why | Notes |
 | :-- | :-- | :-- |
 | Beat mute toggles | The whole of reference-thinning, in one row | Tap a beat to mute it for every voice at once. Backbeat-only, one-per-bar and gap click all fall out of this without the app naming any of them. The persona is explicit that muting is per-beat and not per-voice: *"a grid of voices against beats is a drum machine and they did not ask for one"* |
-| Tap tempo | *"not a nice-to-have. It is how an ear-trained player states a tempo"* | The persona ranks this above the slider for stating a tempo by ear |
 
 ### The groove layer
 

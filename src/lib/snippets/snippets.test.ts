@@ -41,12 +41,12 @@ function everyRenderedString(): string[] {
  * Everything a source file writes down as text that could actually be compared
  * against a snippet.
  *
- * **Comments are not stripped, and that is deliberate.** A snippet quoted in a
- * comment is flagged, which is stricter than the rule needs — but stripping
- * comments means parsing them out of string literals correctly, and a guard
- * that is wrong in the *lenient* direction is the one that lets a hard-coded
- * snippet through. Quote a snippet in a comment and this fails; rephrase the
- * comment.
+ * **Comments are stripped.** A comment cannot fail a test, so flagging one
+ * enforces nothing and constrains prose instead. This was learned the hard
+ * way: markdown backticks in JSDoc parse as template literals, so writing
+ * `bpm` in a doc comment tripped this guard and two authors reworded their
+ * documentation to get around it — which is the exact failure ADR 0003 warned
+ * about, a guard that teaches people to route around it.
  *
  * Not flagged, deliberately:
  *
@@ -67,12 +67,28 @@ function everyRenderedString(): string[] {
  * trade; it is a reviewer's job.
  */
 function assertableTextIn(source: string): string[] {
-  const stripped = source
+  const stripped = withoutComments(source)
     .replace(/from\s*(['"`])[^'"`]*\1/g, '')
     .replace(/\b(?:import|require|vi\.mock)\(\s*(['"`])[^'"`]*\1/g, '')
     .replace(
       /\b(?:describe|it|test)(?:\.\w+)?\(\s*(['"`])(?:[^'"`\\]|\\.)*\1/g,
       '',
+    )
+    // Vitest's assertion message — `expect(value, 'why this matters')`. Prose
+    // about the test, in the same category as a title.
+    //
+    // **Anchored on `expect(`**, because an unanchored version matched any call
+    // whose last argument was a string and which was immediately chained —
+    // `s.replace(/x/, 'Start').trim()` sailed through it. Same mistake as the
+    // comment strip: a lenient regex standing in for knowing what it is
+    // looking at.
+    // The subject is KEPT — only the message goes. Collapsing the whole call
+    // to `expect(0)` threw the subject away with it, so
+    // `expect(get({ name: 'Start' }), 'why').toBe(1)` hid a snippet in the
+    // argument this guard exists to read.
+    .replace(
+      /(?<![.\w])expect\(((?:[^()'"`]|\((?:[^()]|\([^()]*\))*\)|(['"`])(?:[^'"`\\]|\\.)*\2)*),\s*(['"`])(?:[^'"`\\]|\\.)*\3\s*\)/g,
+      'expect($1)',
     )
 
   const quoted = [
@@ -93,6 +109,34 @@ function assertableTextIn(source: string): string[] {
   return [...quoted, ...patterns, ...templates].filter(
     (text) => !isModulePath(text),
   )
+}
+
+/**
+ * Comments out — but **string literals first**, because a comment marker inside
+ * a string is not a comment.
+ *
+ * Both holes were found by attacking this rather than by reading it: `'src/*'`
+ * followed later by `'*\/ '` opened a block comment that swallowed everything
+ * between, and `'a//b'` ate the rest of its line. Either could hide a
+ * hard-coded snippet. So literals are lifted out, comments stripped from what
+ * remains, and the literals put back.
+ */
+function withoutComments(source: string): string {
+  const held: string[] = []
+
+  const parked = source.replace(
+    /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g,
+    (literal) => {
+      held.push(literal)
+      return `\u0000${held.length - 1}\u0000`
+    },
+  )
+
+  const stripped = parked
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\/[^\n]*/g, '')
+
+  return stripped.replace(/\u0000(\d+)\u0000/g, (_, index) => held[Number(index)])
 }
 
 /**
@@ -187,6 +231,57 @@ describe('no test hard-codes what a snippet says', () => {
         "Import the snippet and use it: getByRole('button', { name: metronome.start }).",
       ].join('\n'),
     ).toEqual([])
+  })
+})
+
+describe('the scanner itself', () => {
+  const sees = (source: string, text: string) =>
+    assertableTextIn(source).some((written) => written.includes(text))
+
+  it('sees a plain literal, a template and a regex', () => {
+    expect(sees("const a = 'Start'", 'Start')).toBe(true)
+    expect(sees('const a = `x ${y} Start`', 'Start')).toBe(true)
+    expect(sees('getByText(/Start/i)', 'Start')).toBe(true)
+  })
+
+  it('does not see a comment', () => {
+    expect(sees('// the Start button', 'Start')).toBe(false)
+    expect(sees('/* the Start button */', 'Start')).toBe(false)
+    expect(sees('/** `Start`, in markdown */', 'Start')).toBe(false)
+  })
+
+  it('is not fooled by a comment marker inside a string', () => {
+    // Both of these hid a hard-coded snippet before the literals were parked.
+    expect(sees("const g = 'src/*'\nconst e = '*/ '\nconst a = 'Start'", 'Start')).toBe(true)
+    expect(sees("const a = 'a//b'; const b = 'Start'", 'Start')).toBe(true)
+  })
+
+  it('does not see a test title or an assertion message', () => {
+    expect(sees("it('Start works', () => {})", 'Start')).toBe(false)
+    expect(sees("expect(x, 'Start is shown').toBe(1)", 'Start')).toBe(false)
+  })
+
+  it('is not fooled by a chained .expect(), whose second argument is not a message', () => {
+    // supertest and Playwright both use `.expect(status, body)`. Nothing in
+    // this repo does today; ruling it out costs one lookbehind.
+    expect(sees("r.get('/x').expect(200, 'Start')", 'Start')).toBe(true)
+  })
+
+  it('still sees the subject of a messaged assertion', () => {
+    // Dropping the message must not drop what is being asserted — this is the
+    // most idiomatic way to hard-code a snippet in this repo's test style.
+    expect(sees("expect(g('button', { name: 'Start' }), 'the label').toBe(1)", 'Start')).toBe(true)
+    expect(sees("expect(g(/Start/i), 'why').toBe(1)", 'Start')).toBe(true)
+  })
+
+  it('still sees a snippet in a call that merely looks like an assertion', () => {
+    // The over-reaching version of the message strip swallowed both of these.
+    expect(sees("s.replace(/x/, 'Start').trim()", 'Start')).toBe(true)
+    expect(sees("t('k', 'Start').length", 'Start')).toBe(true)
+  })
+
+  it('does not see a module path that happens to contain the word', () => {
+    expect(sees("import { x } from '@/features/metronome'", 'Metronome')).toBe(false)
   })
 })
 

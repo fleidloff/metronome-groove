@@ -58,6 +58,32 @@ Assert *which* snippet a thing shows by importing it:
 `getByRole('button', { name: metronome.start })`. `snippets.test.ts` enforces
 it, and [ADR 0003](adr/0003-snippets.md) says what it excludes and why.
 
+## A test is not a test until you have seen it fail
+
+**Write it red, or break the code and watch it go red.** This is not ceremony.
+V3 shipped three tests that read correctly, passed, and asserted nothing:
+
+- one probed a *perfect* tapper to prove a window had to be two beats wide —
+  but a perfect tap survives a one-beat window too, so the assertion was true
+  for every value of the constant it existed to justify;
+- one claimed the slider "carries on from" a tapped tempo, while
+  `fireEvent.change` writes an absolute value and never reads the previous one;
+- one proved a scheduling window adapted to the tapped tempo in the module,
+  while the component that used it could have been hard-coded to a constant and
+  every test would still have passed.
+
+All three were found by **mutation** — change the constant, delete the guard,
+replace the call with a literal, and see whether anything goes red. None was
+findable by reading, because each one looked right.
+
+Two habits follow:
+
+- **When a test cannot be red first** — because the code already exists, or
+  because it asserts a contract — mutate deliberately, watch it fail, restore,
+  and say in the report which mutant killed it.
+- **Probe the case the rule exists for, not the easy one.** A rule about
+  tolerating a late player is not tested by a punctual one.
+
 ## Structural tests
 
 Some conventions no linter can check are guarded by tests that read the tree or

@@ -1,7 +1,7 @@
 # V3. Tap tempo
 
 Started 2026-09-12 · `/vibe-with-docs`
-**Phase:** ready to build — `/implement-vibe-with-docs 3`
+**Phase:** ✅ shipped 2026-09-12 — see [features.md](../features.md)
 
 ## What
 
@@ -71,21 +71,21 @@ session.
 
 ## Done when
 
-1. **Four taps set the tempo**, from the three intervals between them, and
-   nothing changes before the fourth. Fewer than four taps leaves the tempo
-   exactly as it was.
+1. **Any two or more taps set the tempo**, from the average of their intervals,
+   and **the slider moves with it** — the tapped tempo and the slider are one
+   value, so nudging the slider after a tap carries on from what was tapped
+   rather than from where the slider was left. There is no tap count to reach.
 2. **A tap wildly out of line with the others is dropped** rather than averaged
-   in, and the attempt still succeeds on four taps. An attempt is never thrown
-   away.
+   in, whenever there are enough taps to tell — three or more. An attempt is
+   never thrown away.
 3. **A tapped tempo outside 40–180 bpm is refused** and the previous tempo
    stands — nothing is clamped, and nothing silently changes.
-4. **Tapping while the click runs silences it from the first tap and returns it
-   at the new tempo on the fourth**, on its own, starting a fresh bar on the
-   accent.
-5. **An attempt expires two seconds after the last tap** — the tempo untouched,
-   the click resumed if it was running — so a tap minutes later starts a fresh
-   attempt rather than averaging against an interval from before the
-   interruption.
+4. **Tapping while the click runs silences it from the first tap**, and two
+   beats *of the tapped tempo* after the last tap it returns at the new tempo,
+   on its own, starting a fresh bar on the accent. Before there is a tapped
+   tempo to measure — after a single tap — the window is two seconds.
+5. **Tapping while the click is stopped sets the tempo and leaves it stopped**,
+   and a single tap sets nothing while still returning the click as it was.
 
 ## Decided
 
@@ -109,11 +109,31 @@ And decided in this conversation:
   **The research below stays in this folder** rather than moving to V4's, because
   it is what justified the split. V4's spec will point at it.
 
-* **Four taps set a tempo** — one bar, not two taps. Because it is what the hand
-  already does counting a band in, and because a tempo guessed at tap two is
-  *audible*: a wrong click pulls the hand and makes taps three and four worse
-  than the first two. The cost is accepted: three intervals of waiting, which on
-  day one reads as the button being broken.
+* ~~**Four taps set a tempo.**~~ **Superseded after using it — there is no tap
+  count at all.** *"4-tap wait feels weird. Let's still stop metronome while
+  tapping, after 2s no tap, we take the bpm and start again (unless the
+  metronome was stopped anyway). no 4 tap hard cut."*
+
+  **Tap as many times as you like; the silence ends it.** Two seconds after the
+  last tap, whatever you tapped becomes the tempo and the click returns.
+
+  Sam predicted the original would feel broken on day one — *"three intervals of
+  waiting… will feel like the button is broken. I'd live with it."* It was built
+  as specced, used, and it did. The hard cut was the problem rather than the
+  wait: a fixed count makes the app decide when you are finished, and four taps
+  is both too long for someone sure of the tempo and too short for someone
+  feeling for it.
+
+  **What this buys beyond feel.** More taps now mean a *better* answer instead
+  of a discarded one — eight taps average seven intervals. And the interaction
+  has one rule rather than two, because the two-second silence already ended an
+  attempt; it now ends every attempt, successfully.
+
+  **What it costs, stated plainly.** Two taps is a legal tempo, and two taps is
+  one interval with no outlier protection possible — a median of one number is
+  that number. A fumbled double-tap can set a wild tempo, and the only thing
+  standing behind it is the 40–180 refusal. Tap three times and the protection
+  is back.
 
 * **A tap wildly out of line with the others is dropped; an attempt is never
   thrown away.** Because the only way a player learns an attempt failed is by
@@ -127,8 +147,9 @@ And decided in this conversation:
   self-correcting — a player realises they tapped eighths — and the 30 bpm case
   sends them to the slider, which is still there.
 
-* **The click goes quiet on the first tap and returns at the new tempo on the
-  fourth.** Because `docs/persona.md` now says they work entirely by ear once it
+* **The click goes quiet on the first tap and returns at the new tempo when the
+  tapping stops.** *(Originally "on the fourth" — there is no tap count; see the
+  superseded bullet above.)* Because `docs/persona.md` now says they work entirely by ear once it
   is playing, and two tempos in that one channel is the thing that cannot work:
   a click you can hear is a click your hand follows, so tapping against the old
   tempo lands you between the two.
@@ -138,8 +159,39 @@ And decided in this conversation:
   It returns on its own — pressing start again would be a second action, against
   "a sound in one tap".
 
-* **An attempt expires after two seconds without a tap.** The tempo is left
-  untouched and the click resumes if it was running when tapping began.
+* **Two beats of silence commits the tempo** — two beats *at what is being
+  tapped*, not a fixed two seconds. *"I don't want to wait 2 seconds of pause
+  after tapping tempo but instead 2 beats length in new tempo (whatever the
+  average is while tapping)."*
+
+  The window is therefore 1.0 s at 120 bpm, 0.67 s at 180, and 3.0 s at 40 —
+  snappy where a fixed two seconds dragged, and patient where it would have cut
+  a slow tune off.
+
+  **The first tap is the case that needs care**, because there is no interval
+  yet and so nothing to scale by. It waits **two seconds** — *"when there is
+  only 1 tap, we can use 2secs as fallback"*. That clears the slowest legal tap
+  gap, 1.5 s at 40 bpm, with margin; and since one tap commits nothing, all this
+  window decides is how long a stray press holds the click quiet.
+
+  **A limit that falls out of this, worth knowing rather than discovering.** A
+  second tap slower than 2 s always restarts the attempt, so **no tempo below
+  30 bpm can be tapped in at all** — it is not refused, it simply never
+  assembles. 30 bpm is legal to tap only because `hasExpired` uses a strict
+  `>`, landing exactly on the boundary. Nothing below 40 is a legal tempo
+  anyway, so this costs nothing today; it would matter the moment the range
+  widened downwards.
+
+  Scaling that first window by the *slider's current* tempo was rejected, and
+  the reason is the same one that killed a tempo-scaled window earlier in this
+  spec: tap a 40 bpm tune while the slider sits at 180 and the window is 0.67 s,
+  your second tap lands at 1.5 s, and the attempt restarts forever. Being
+  generous until there is evidence has no such failure.
+
+  The click restarts **only if it was running when tapping began**: tapping with
+  the click off sets the tempo and leaves it off. A single tap sets nothing,
+  because one tap is no interval — the click still returns, unchanged, so a
+  stray press is never a way to get stranded silent.
 
   Two seconds because it is **derived rather than picked**: the slowest legal
   tap interval is 1.5 s at 40 bpm, so the window has to clear that with margin,

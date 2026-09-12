@@ -54,6 +54,54 @@ puts the app into a mode, and the only evidence is on a screen two metres away,
 then the player does not know which mode they are in — and the next press does
 something they did not intend. A mode you cannot hear is worse than no mode.
 
+## The probe, before anything is built
+
+**V4 does not start with code. It starts with a measurement**, because the one
+thing that decides this feature's shape cannot be reasoned out from
+documentation — it is a property of the speaker in the room.
+
+This came out of V3, which was re-specified twice *after* it was built, each
+time because using it taught us something the spec had guessed at. That is a
+fine way to learn and an expensive way to build. Here the uncertainty is known
+in advance, so it gets answered first.
+
+### What the probe is
+
+**Not a `/prototype`.** That skill draws screens, and says in as many words:
+no audio, fake data, nothing that touches the real thing. This is the opposite —
+its entire value is real audio, a real speaker and real firmware. It is a
+diagnostic page, and it renders almost nothing.
+
+One self-contained HTML file at **`public/v4-probe.html`**, so `npm run dev`
+serves it at `/v4-probe.html` with a real origin. Outside `src/`, so no lint
+zone binds it and it never enters the app bundle.
+
+### What it has to answer
+
+| Question | How the probe answers it |
+| :-- | :-- |
+| Does a media session exist at all without an `<audio>` element? | Registers handlers with only an `AudioContext` running, and reports whether anything arrives |
+| Does the silent-element trick work? | Same again with a silent loop playing, for comparison |
+| Which actions does this platform accept? | Logs the result of every `setActionHandler` call, including the ones that throw |
+| **What does a double press actually send?** | Logs every action as it arrives. `nexttrack` confirms the research; two `play`s would disprove it |
+| **What is this speaker's real multi-press window?** | Logs the millisecond gap between consecutive actions, so tapping steadily shows where the firmware starts swallowing presses |
+| Can a tempo be tapped at all? | Shows the running bpm implied by the gaps, so you can see it hold or collapse |
+
+### How it is run, because this part is fiddly
+
+1. `npm run dev -- --hostname 0.0.0.0`, so the phone can reach it.
+2. Open `http://<laptop-ip>:3000/v4-probe.html` on the **phone**, paired to the
+   speaker. A laptop with no Bluetooth speaker tests nothing.
+3. Press play once. Press it twice quickly. Then tap a steady 120 and a steady
+   60, and read the gaps.
+
+### What is done with the result
+
+**The findings go into this file**, under a `## What the probe found` heading,
+with the numbers. Then either the build proceeds as specced, or the fallback
+above is taken and an ADR records why. **Either outcome is the probe
+succeeding** — it is a question being answered, not a step that can fail.
+
 ## Done when
 
 1. **A single press on the speaker starts and stops the click**, through
@@ -65,10 +113,11 @@ something they did not intend. A mode you cannot hear is worse than no mode.
    outlier rule, the same refusal outside 40–180 bpm. No new tap semantics.
 4. **Tap mode ends two seconds after the last tap with a second cowbell**, the
    tempo untouched, and a stray single tap sets nothing.
-5. **We learn whether per-beat tapping survives the speaker's firmware**, on
-   real hardware, and the answer is written down either way — shipped if it
-   works, an ADR and a fallback to per-bar tapping if it does not. **Only a
-   person with a speaker can settle this**; no test can.
+5. **The probe has answered whether per-beat tapping survives this speaker's
+   firmware**, on real hardware, *before* the feature was built — and the
+   numbers are in this file. If it does not survive, V4 ships play/stop over
+   Bluetooth only and an ADR records why. **Only a person with a speaker can
+   settle this**; no test can.
 
 ## Decided
 
@@ -99,16 +148,23 @@ And decided in this conversation:
   on the actual hardware rather than to infer from Sony's help pages.
 
   **What that makes V4.** It is an experiment with a cheap revert, not a feature
-  whose behaviour is known in advance. The finding is a deliverable in its own
-  right — `## Done when` 5 — and it is recorded either way:
+  whose behaviour is known in advance — and **the experiment now runs before the
+  feature is built**, as a probe. See `## Done when` 5 — and it is
+  recorded either way:
 
   | If per-beat tapping works | Ship it. The tap unit is the same on screen and on the speaker, so there is no second mental model, and V3's module is reused unchanged |
-  | If the firmware eats it | Record it as an ADR, drop the tapping half, and keep play/pause and the mode cue. Per bar is the named fallback, and it is a one-line change to the tap unit rather than a redesign |
+  | If the firmware eats it | *"we can rewrite the feature to play / stop via bluetooth only"* — drop the tapping half entirely, keep play/pause and lose the mode cue with it. Recorded as an ADR so nobody proposes it again |
+  | If the probe shows a window that clears a slower unit | Per-bar tapping becomes available as a middle option — worth knowing, but not the default fallback. The user's fallback is play/stop only |
 
-  **Because the unit is the same as V3's, so is everything else:** four taps, a
-  two-second expiry, the same outlier rule, the same refusal outside 40–180.
-  V4 adds no new tap semantics at all — it feeds the same `addTap` from a media
-  key instead of a button, which is exactly what V3's tech spec froze it for.
+  **Because the unit is the same as V3's, so is everything else** — and V3 has
+  since changed, so this inherits the change rather than the original: no tap
+  count at all, a window of two beats of whatever is being tapped (a flat two
+  seconds while there is only one tap), the same outlier rule, the same refusal
+  outside 40–180.
+
+  V4 adds no new tap semantics — it feeds the same `addTap`/`commit` from a
+  media key instead of a button, which is exactly what V3's tech spec froze
+  that module for.
 
 * **Entering tap mode plays a cowbell.** Because Sam's requirement is a voice
   that is obviously *not* the click — pitch-shifting claves would read as the

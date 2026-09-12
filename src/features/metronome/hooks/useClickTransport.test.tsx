@@ -1,27 +1,43 @@
 import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Transport } from '../components/Metronome'
-import { useClickTransport, type Audio, type AudioFactory } from './useClickTransport'
+import {
+  useClickTransport,
+  type Audio,
+  type AudioFactory,
+} from './useClickTransport'
 
 /** A device that never sounds, with every handle the hook can leak. */
 function fakeAudio() {
   const close = vi.fn().mockResolvedValue(undefined)
   const resume = vi.fn().mockResolvedValue(undefined)
   const stopSounding = vi.fn()
-  const stop = vi.fn()
   const built: { count: number } = { count: 0 }
 
   let release: ((audio: Audio) => void) | null = null
+
+  let running = false
+
+  const start = vi.fn(() => {
+    running = true
+  })
+  const stop = vi.fn(() => {
+    running = false
+  })
+  const setTempo = vi.fn()
+  const tick = vi.fn()
 
   const audio: Audio = {
     context: { state: 'running', resume, close },
     clock: { currentTime: 0, stopSounding },
     scheduler: {
-      isRunning: false,
-      start: vi.fn(),
+      get isRunning() {
+        return running
+      },
+      start,
       stop,
-      setTempo: vi.fn(),
-      tick: vi.fn(),
+      setTempo,
+      tick,
       onBeat: vi.fn(() => () => {}),
     },
   }
@@ -39,6 +55,9 @@ function fakeAudio() {
     close,
     stopSounding,
     stop,
+    start,
+    setTempo,
+    tick,
     finishLoading: async () => {
       release?.(audio)
       await act(async () => {})
@@ -68,7 +87,11 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.clearAllTimers()
+  vi.useRealTimers()
 })
+
+/** Lets the transport's own promise chain settle. Nothing here ever sleeps. */
+const settle = () => act(async () => {})
 
 describe('the click transport', () => {
   it('builds nothing until start, so a render touches no audio device', () => {
@@ -186,5 +209,126 @@ describe('the click transport', () => {
 
     expect(typeof off).toBe('function')
     off()
+  })
+})
+
+describe('the click transport suspended between taps', () => {
+  it('silences a running click when it suspends', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().suspend())
+
+    expect(device.stop).toHaveBeenCalled()
+    expect(device.stopSounding).toHaveBeenCalled()
+    expect(vi.mocked(globalThis.cancelAnimationFrame)).toHaveBeenCalled()
+  })
+
+  it('queues nothing more while it is suspended', async () => {
+    vi.useFakeTimers()
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().suspend())
+    device.tick.mockClear()
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(device.tick).not.toHaveBeenCalled()
+  })
+
+  it('returns on a fresh bar at the new tempo when it resumes', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().suspend())
+    act(() => transport().resume(90))
+    await settle()
+
+    expect(device.setTempo).toHaveBeenLastCalledWith(90)
+    expect(device.start).toHaveBeenCalledTimes(2)
+    // A fresh bar, not a continuation: the scheduler was stopped before the
+    // second start, which is what resets the cursor onto the accent.
+    expect(device.stop.mock.invocationCallOrder[0]).toBeLessThan(
+      device.start.mock.invocationCallOrder[1],
+    )
+  })
+
+  it('does not build a device when it suspends and resumes with the click off', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => {
+      transport().suspend()
+      transport().resume(140)
+    })
+    await settle()
+
+    expect(device.built.count).toBe(0)
+    expect(vi.mocked(globalThis.requestAnimationFrame)).not.toHaveBeenCalled()
+  })
+
+  it('does not turn the click back on when it was stopped before the suspend', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().stop())
+    act(() => transport().suspend())
+    act(() => transport().resume(140))
+    await settle()
+
+    expect(device.start).toHaveBeenCalledTimes(1)
+    expect(device.setTempo).not.toHaveBeenCalledWith(140)
+  })
+
+  it('leaves nothing running and closes the device when it unmounts suspended', async () => {
+    vi.useFakeTimers()
+    const device = fakeAudio()
+    const { transport, unmount } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().suspend())
+    unmount()
+    device.tick.mockClear()
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(device.tick).not.toHaveBeenCalled()
+    expect(device.close).toHaveBeenCalled()
+  })
+
+  it('does not double-start when resume is called twice', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().suspend())
+    act(() => transport().resume(100))
+    await settle()
+    act(() => transport().resume(100))
+    await settle()
+
+    expect(device.start).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores a resume that follows no suspend', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().resume(90))
+    await settle()
+
+    expect(device.start).toHaveBeenCalledTimes(1)
+    expect(device.setTempo).not.toHaveBeenCalledWith(90)
   })
 })
