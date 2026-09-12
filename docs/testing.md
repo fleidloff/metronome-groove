@@ -84,6 +84,27 @@ Two habits follow:
 - **Probe the case the rule exists for, not the easy one.** A rule about
   tolerating a late player is not tested by a punctual one.
 
+## Some questions are answered by hardware, not by tests
+
+A probe is a page that reports what a device did. It asserts nothing, has no
+test, and is not loaded by the suite — and that is correct rather than a gap.
+Its output is a measurement a person reads.
+
+**A probe is also disposable.** V4's lived at `public/v4-probe.html`, answered
+its question and was deleted; what survives is the measurement, in
+[ADR 0004](adr/0004-bluetooth-media-buttons.md), and the method, in that
+change's tech spec. Keep the finding, not the instrument.
+
+Write one when a decision turns on behaviour no test can reach: firmware, an OS
+routing rule, a browser's private threshold. Run it before building, record the
+numbers in the spec, and turn what it found into an ADR. V4 was specced as four
+tracks and shipped as one because a probe answered its central question in
+twenty minutes.
+
+**What still needs a test is everything the probe's answer then implies.** That a
+platform refuses gracefully, that a file is the length it claims — those are
+ordinary assertions and they are not excused by the probe.
+
 ## Structural tests
 
 Some conventions no linter can check are guarded by tests that read the tree or

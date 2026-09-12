@@ -20,6 +20,7 @@ in either table.
 
 | N | Title | Shipped | What landed |
 | :-- | :-- | :-- | :-- |
+| [4](4-bluetooth-tap-tempo/) | Start and stop from the speaker | 2026-09-12 | The speaker's button starts and stops the click, on Chrome. Specced as tap-tempo-over-Bluetooth; a hardware probe cut it to this, and the probe's findings are [ADR 0004](../docs/adr/0004-bluetooth-media-buttons.md). Absent on Firefox by decision, not degraded. Armed by the first on-screen press, because a browser will not let an untouched page claim a media session. |
 | [3](3-tap-tempo/) | Tap tempo | 2026-09-12 | Tap a tempo on screen: the click goes quiet while you tap and returns at the new tempo when you stop. No tap count — the tapping commits when it stops, after two beats of whatever was tapped (two seconds flat while there is only one tap). Shares one value with the slider. |
 | [2](2-simple-4-4-metronome/) | Simple 4/4 metronome | 2026-09-12 | A claves click scheduled on the audio clock: start/stop, a 40–180 bpm slider, four beat dots, and an accent on beat 1 driven by a reusable velocity curve that future grooves share. Compensates the sample's 8.3 ms lead-in. Also moved every user-facing word into `src/lib/snippets/`. Produced [ADR 0003](../docs/adr/0003-snippets.md). |
 | [1](1-next-app-scaffold/) | Next.js app scaffold | 2026-09-12 | Next 16 / React 19 / TypeScript / Tailwind v4, Vitest + Testing Library, and the import graph turned from a description into an enforced, tested fact. One stubbed `metronome` slice reached through its `index.ts`. Produced [ADR 0001](../docs/adr/0001-enforced-import-graph.md) and [ADR 0002](../docs/adr/0002-tailwind-v4.md). |
@@ -79,6 +80,8 @@ The premise of the project, and the expensive half.
 
 | Candidate | Why | Notes |
 | :-- | :-- | :-- |
+| **Tell the player the speaker needs one press first** | V4 ships a feature nobody can discover | A browser will not let an untouched page claim a media session, so the speaker's button does nothing until Start has been pressed once on screen. A player pressing the speaker on a fresh page gets silence and no way to find out why from two metres away. Needs to say it **without** becoming setup-before-sound, which `docs/persona.md` names as a thing that loses Sam — so probably a line that appears only where it is relevant, and never a modal or a tutorial |
+| Use `nexttrack` from the speaker | A second signal the hardware does deliver | Deferred from V4 deliberately. A double press arrives as `nexttrack`; [ADR 0004](../docs/adr/0004-bluetooth-media-buttons.md) has the measurements. What it should *do* is undecided |
 | Persisted setup | *"Coming back tomorrow costs nothing and starts where they stopped"* | Tempo and toggles in the browser. No account — the persona counts a sign-up as setup before sound |
 | Credit strings in the UI | CC-BY is an obligation, not a footnote | Blocks shipping any MuldjordKit or DRSKit voice. **Not** triggered by claves, which is CC0 |
 

@@ -73,8 +73,16 @@ its entire value is real audio, a real speaker and real firmware. It is a
 diagnostic page, and it renders almost nothing.
 
 One self-contained HTML file at **`public/v4-probe.html`**, so `npm run dev`
-serves it at `/v4-probe.html` with a real origin. Outside `src/`, so no lint
-zone binds it and it never enters the app bundle.
+served it at `/v4-probe.html` with a real origin. Outside `src/`, so no lint
+zone bound it and it never entered the app bundle.
+
+**It was deleted once it had reported**, at the user's request — *"please also
+remove the v4-probe.html. not needed anymore."* It was never committed, so it is
+gone rather than recoverable. What survives is what matters: the measurements,
+in [ADR 0004](../../docs/adr/0004-bluetooth-media-buttons.md), and enough of the
+method in `tech-spec.md` § *Track P* to build another one. A later change that
+wants to measure `nexttrack` starts from that description rather than from this
+file.
 
 ### What it has to answer
 
@@ -102,22 +110,130 @@ with the numbers. Then either the build proceeds as specced, or the fallback
 above is taken and an ADR records why. **Either outcome is the probe
 succeeding** — it is a question being answered, not a step that can fail.
 
+## What the probe found
+
+### Run 1 — Firefox, digital silence: the page never claimed the session
+
+> *"does not work on firefox. pressing play just opens spotify."*
+
+Spotify taking the button is the tell: the press reached the OS and was routed
+to whichever app owned the media session, and it was not us.
+
+**The documented cause, found after the fact.** Firefox will not dispatch media
+keys for media it considers *inaudible*, and it decides that by reading the
+samples — there is a pref for it,
+`dom.media.silence_duration_for_audibility`. Chrome accepts digital zeros;
+Firefox does not. Separately, a media notification is only shown for media
+**longer than five seconds**, and the probe's first silent file was one second.
+
+So run 1 tested two defects at once and cannot separate them. Both are fixed:
+the generated file is now **eight seconds**, and the probe offers a **ladder**
+rather than a single silent element.
+
+### The ladder, and why it is shaped this way
+
+| Mode | What plays | What it proves |
+| :-- | :-- | :-- |
+| 1 · Context only | An `AudioContext`, nothing else | Whether Web Audio alone can own a session. The app's click is exactly this |
+| 2 · Digital silence | 8 s of zeros, looping | The documented Chrome-works / Firefox-does-not case |
+| 3 · Near-silent | 60 Hz at **−81 dBFS** | Whether audibility is judged from the *samples* or merely from `volume` and `muted` |
+| 4 · Quiet tone | 220 Hz at **−26 dBFS**, plainly audible | Proves the mechanism works at all, and sets the price if it is the only mode that does |
+
+**The lowest mode that responds is the answer** — it is the least this app must
+do to own the buttons.
+
+### What each outcome costs V4
+
+* **Mode 1 works** — free. The click already runs an `AudioContext`.
+* **Mode 2 or 3 works** — cheap. A silent or inaudible loop runs beside the
+  click. This is the shape `tech-spec.md` already assumes.
+* **Only mode 4 works** — **expensive, and a product problem rather than a
+  technical one.** Owning the buttons would cost a permanently audible tone
+  under a metronome. `docs/persona.md` is unambiguous that a sound Sam did not
+  ask for is a reason to close the tab. If this is the finding, V4 is probably
+  Chrome-only, or it does not ship.
+* **Nothing works in Firefox at any level** — record it and decide whether V4 is
+  worth building for Chrome alone. That is a scope question, not a bug.
+
+### Run 2 — the ladder, answered
+
+> *"It doesn't work for firefox, only with the quiet tone (which is way too
+> loud). That means we will build the feature for chrome only with 'digital
+> silence'."*
+
+**Firefox is out, and not by a small margin.** Modes 1, 2 and 3 gave it nothing;
+only mode 4 — a plainly audible 220 Hz tone at −26 dBFS — claimed the session.
+So on Firefox, owning the buttons costs a permanent audible tone under the
+metronome, which `docs/persona.md` rules out in as many words: a sound the
+player did not ask for is a reason to close the tab.
+
+That settles the outcome the spec had already named as the expensive one. **It
+is not a bug to fix and not a fallback to build** — no browser switch, no
+degraded mode. On Firefox the feature simply is not there.
+
+**On Chrome, digital silence is enough** — mode 2. That is the cheap outcome,
+and it is what ships.
+
+> *"The box firmware interprets fast taps by it's own."*
+
+**Tap tempo over Bluetooth is dead, confirmed on hardware rather than inferred
+from Sony's documentation.** V3's research predicted it; the probe proved it on
+the speaker in the room.
+
+## What V4 is now
+
+Everything below this line was written before the probe. The probe cut it down,
+which is what a probe is for.
+
+* **Start and stop from the speaker. That is the whole feature.**
+* **Tap tempo is removed**, not deferred — the firmware eats fast presses and no
+  code changes that.
+* **`nexttrack` is deferred**, not removed: *"Later, we will also use the
+  'nexttrack' event from the speaker, but not in here."* No mode machine, no
+  cowbell, no second sample in this change.
+* **Chrome only**, by consequence rather than by choice.
+
+## Signed off on hardware — 2026-09-12
+
+> *"error is gone and it works now."*
+
+Chrome, a phone, a paired speaker. The button starts and stops the click.
+
+**What the sign-off had to be careful about**, and nearly was not: the failure
+this change shipped with was invisible *after* the first press of Start. The
+page bound its media session on mount, which needs a user gesture the page has
+not had, so Chrome refused with `NotAllowedError` — the session was never
+claimed and the button did nothing. Testing after pressing Start would have
+looked like success. **A cold load is the only test that finds it**, and the
+arming behaviour now has a test that fails if anyone moves the binding back to
+mount.
+
+### The gap the sign-off leaves open
+
+**Nothing tells the player they have to press Start once before the speaker
+works.** They will press the speaker's button on a fresh page, nothing will
+happen, and there is no way to find out why from across the room.
+
+Out of scope here by decision — *"Please add this notification as a candidate
+feature. We will not do more with this ticket."* It is in
+[features.md](../features.md) as a candidate.
+
 ## Done when
 
-1. **A single press on the speaker starts and stops the click**, through
-   Media Session's `play` and `pause` actions, with each handler registered
-   defensively so an unsupported action degrades rather than throws.
-2. **A double press enters tap mode and a cowbell says so** — the double press
-   arriving as `nexttrack`, and the cowbell being a voice no other state uses.
-3. **Presses in tap mode feed V3's `addTap` unchanged** — four taps, the same
-   outlier rule, the same refusal outside 40–180 bpm. No new tap semantics.
-4. **Tap mode ends two seconds after the last tap with a second cowbell**, the
-   tempo untouched, and a stray single tap sets nothing.
-5. **The probe has answered whether per-beat tapping survives this speaker's
-   firmware**, on real hardware, *before* the feature was built — and the
-   numbers are in this file. If it does not survive, V4 ships play/stop over
-   Bluetooth only and an ADR records why. **Only a person with a speaker can
-   settle this**; no test can.
+1. **A press on the speaker's button starts the click, and the next press stops
+   it** — through Media Session's `pause` action, which is the one the hardware
+   actually delivers.
+2. **A silent `<audio>` element owns the media session** from the first
+   on-screen press until the page closes — not from mount, because a browser
+   will not let an untouched page play — and is torn down with it. Digital silence, because the probe showed that is
+   enough on Chrome.
+3. **Every handler is registered defensively**, so a platform that refuses an
+   action degrades instead of throwing — and a browser that gives us nothing,
+   like Firefox, leaves the rest of the app working exactly as before.
+4. **Nothing about the on-screen app changes.** The same controls, the same
+   tests, the same behaviour with no speaker attached.
+5. **The probe's findings are an ADR**, so the next person to propose tapping a
+   tempo on a Bluetooth button finds the measurement rather than repeating it.
 
 ## Decided
 
@@ -131,10 +247,16 @@ Settled elsewhere and not re-asked:
 
 And decided in this conversation:
 
-* **Single press starts and stops the click; a double press — which arrives as
-  `nexttrack` — enters tap mode.** Because that is what the firmware actually
-  sends, per V3's research. The original "two plays" design describes something
-  the browser never receives.
+* ~~**Single press starts and stops; a double press enters tap mode.**~~
+  **Half survived the probe.** The single press stays and is the whole feature;
+  the double press is deferred to a later change, and the tapping it was going
+  to enter is gone for good.
+
+* **The action we bind is `pause`, not `play`.** *"We also only use the 'pause'
+  event for starting and stopping the metronome."* Because that is what the
+  hardware delivers: with `playbackState` left at `playing`, the system believes
+  the page is playing and sends `pause` on every press. One action, every time,
+  rather than an alternation we would have to track.
 
 * **Beat taps, not bar taps — and this change is how we find out whether that
   works.** *"let's find that out with this ticket. if it is really the case, we
@@ -149,22 +271,88 @@ And decided in this conversation:
 
   **What that makes V4.** It is an experiment with a cheap revert, not a feature
   whose behaviour is known in advance — and **the experiment now runs before the
-  feature is built**, as a probe. See `## Done when` 5 — and it is
-  recorded either way:
+  feature is built**, as a probe. See `## What the probe found
 
-  | If per-beat tapping works | Ship it. The tap unit is the same on screen and on the speaker, so there is no second mental model, and V3's module is reused unchanged |
-  | If the firmware eats it | *"we can rewrite the feature to play / stop via bluetooth only"* — drop the tapping half entirely, keep play/pause and lose the mode cue with it. Recorded as an ADR so nobody proposes it again |
-  | If the probe shows a window that clears a slower unit | Per-bar tapping becomes available as a middle option — worth knowing, but not the default fallback. The user's fallback is play/stop only |
+### Run 1 — Firefox, digital silence: the page never claimed the session
 
-  **Because the unit is the same as V3's, so is everything else** — and V3 has
-  since changed, so this inherits the change rather than the original: no tap
-  count at all, a window of two beats of whatever is being tapped (a flat two
-  seconds while there is only one tap), the same outlier rule, the same refusal
-  outside 40–180.
+> *"does not work on firefox. pressing play just opens spotify."*
 
-  V4 adds no new tap semantics — it feeds the same `addTap`/`commit` from a
-  media key instead of a button, which is exactly what V3's tech spec froze
-  that module for.
+Spotify taking the button is the tell: the press reached the OS and was routed
+to whichever app owned the media session, and it was not us.
+
+**The documented cause, found after the fact.** Firefox will not dispatch media
+keys for media it considers *inaudible*, and it decides that by reading the
+samples — there is a pref for it,
+`dom.media.silence_duration_for_audibility`. Chrome accepts digital zeros;
+Firefox does not. Separately, a media notification is only shown for media
+**longer than five seconds**, and the probe's first silent file was one second.
+
+So run 1 tested two defects at once and cannot separate them. Both are fixed:
+the generated file is now **eight seconds**, and the probe offers a **ladder**
+rather than a single silent element.
+
+### The ladder, and why it is shaped this way
+
+| Mode | What plays | What it proves |
+| :-- | :-- | :-- |
+| 1 · Context only | An `AudioContext`, nothing else | Whether Web Audio alone can own a session. The app's click is exactly this |
+| 2 · Digital silence | 8 s of zeros, looping | The documented Chrome-works / Firefox-does-not case |
+| 3 · Near-silent | 60 Hz at **−81 dBFS** | Whether audibility is judged from the *samples* or merely from `volume` and `muted` |
+| 4 · Quiet tone | 220 Hz at **−26 dBFS**, plainly audible | Proves the mechanism works at all, and sets the price if it is the only mode that does |
+
+**The lowest mode that responds is the answer** — it is the least this app must
+do to own the buttons.
+
+### What each outcome costs V4
+
+* **Mode 1 works** — free. The click already runs an `AudioContext`.
+* **Mode 2 or 3 works** — cheap. A silent or inaudible loop runs beside the
+  click. This is the shape `tech-spec.md` already assumes.
+* **Only mode 4 works** — **expensive, and a product problem rather than a
+  technical one.** Owning the buttons would cost a permanently audible tone
+  under a metronome. `docs/persona.md` is unambiguous that a sound Sam did not
+  ask for is a reason to close the tab. If this is the finding, V4 is probably
+  Chrome-only, or it does not ship.
+* **Nothing works in Firefox at any level** — record it and decide whether V4 is
+  worth building for Chrome alone. That is a scope question, not a bug.
+
+### Run 2 — the ladder, answered
+
+> *"It doesn't work for firefox, only with the quiet tone (which is way too
+> loud). That means we will build the feature for chrome only with 'digital
+> silence'."*
+
+**Firefox is out, and not by a small margin.** Modes 1, 2 and 3 gave it nothing;
+only mode 4 — a plainly audible 220 Hz tone at −26 dBFS — claimed the session.
+So on Firefox, owning the buttons costs a permanent audible tone under the
+metronome, which `docs/persona.md` rules out in as many words: a sound the
+player did not ask for is a reason to close the tab.
+
+That settles the outcome the spec had already named as the expensive one. **It
+is not a bug to fix and not a fallback to build** — no browser switch, no
+degraded mode. On Firefox the feature simply is not there.
+
+**On Chrome, digital silence is enough** — mode 2. That is the cheap outcome,
+and it is what ships.
+
+> *"The box firmware interprets fast taps by it's own."*
+
+**Tap tempo over Bluetooth is dead, confirmed on hardware rather than inferred
+from Sony's documentation.** V3's research predicted it; the probe proved it on
+the speaker in the room.
+
+* ~~**Beat taps, not bar taps — and this change is how we find out whether that
+  works.**~~ **Answered by the probe: it does not work.**
+
+  The prediction was right and the measurement is what settles it. The speaker's
+  firmware interprets fast presses itself, so a tempo cannot be tapped on that
+  button at any unit fast enough to be useful. Per-bar tapping is not taken up
+  as a middle option either — the user's call was play/stop only.
+
+  What this cost to learn: one 8 KB HTML file and twenty minutes with a phone.
+  What it would have cost to learn later: a mode machine, a second sample, a
+  cowbell cue and four tracks of work, all deleted. **The probe is the reason
+  this bullet is three lines instead of a rewrite.**
 
 * **Entering tap mode plays a cowbell.** Because Sam's requirement is a voice
   that is obviously *not* the click — pitch-shifting claves would read as the

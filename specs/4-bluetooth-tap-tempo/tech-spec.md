@@ -21,189 +21,104 @@
 
 ## Contracts
 
+The probe cut this down to one seam. `remoteMode.ts`, the cowbell and the tap
+delegation are all gone — not deferred, **deleted**, because the thing they
+served cannot work on this hardware.
+
 ### `src/features/metronome/lib/remote/mediaKeys.ts`
 
-The media-key seam. Pure of React, and injectable so a test can fire actions
-without a device.
-
 ```ts
-export type MediaAction = 'play' | 'pause' | 'nexttrack'
+/** The only action the hardware actually delivers. With `playbackState` left
+ *  at 'playing', the system believes the page is playing and sends `pause` on
+ *  every press — one signal, every time, rather than an alternation to track. */
+export type MediaAction = 'pause'
 
-export interface MediaKeys {
-  /** Registers each handler defensively; an unsupported action is skipped
-   *  rather than thrown. Returns a teardown that clears every handler it set. */
-  bind(handler: (action: MediaAction, at: number) => void): () => void
-  /** Which actions this platform accepted. Read after bind, for the report. */
-  readonly supported: readonly MediaAction[]
+export interface MediaKeysOptions {
+  /** Injected so a test can drive this without a device. */
+  session?: MediaSession
+  /** The silent media that makes the browser believe we are playing. */
+  media?: HTMLAudioElement
 }
 
-export function createMediaKeys(
-  session?: MediaSession,
-  now?: () => number,
-): MediaKeys
+/**
+ * Binds the speaker's button. Returns a teardown that releases everything it
+ * took — the handler, the metadata and the media element.
+ *
+ * Registers defensively: a platform that refuses the action degrades rather
+ * than throwing, and a browser that gives us nothing (Firefox) leaves the rest
+ * of the app working exactly as before.
+ */
+export function bindMediaKeys(
+  onPress: () => void,
+  options?: MediaKeysOptions,
+): () => void
+
 ```
 
-### `src/features/metronome/lib/remote/remoteMode.ts`
+**`isSupported` was specced here and deleted rather than built.** It could only
+answer the question by calling `setActionHandler(ACTION, null)` — which in
+Chrome unbinds a live handler. A predicate that breaks what it inspects is worse
+than not knowing.
 
-The mode machine, pure and taking timestamps — the same shape as V3's
-`lib/tap/`, and for the same reason.
+### `src/features/metronome/lib/remote/silentMedia.ts`
 
 ```ts
-export type RemoteMode = 'transport' | 'tapping'
+/** Eight seconds of digital silence as a data URI. Eight because a media
+ *  notification is only shown for media longer than five; digital zeros
+ *  because the probe showed that is enough on Chrome. */
+export const SILENT_WAV: string
 
-export type RemoteState = {
-  readonly mode: RemoteMode
-  readonly taps: TapState   // V3's, unchanged
-}
-
-export type RemoteEffect =
-  | { kind: 'start' } | { kind: 'stop' }
-  | { kind: 'cue'; reason: 'entered' | 'left' }
-  | { kind: 'tempo'; bpm: number }
-  | { kind: 'nothing' }
-
-export const EMPTY_REMOTE: RemoteState
-
-/** Pure. Every decision this feature makes is in here. */
-export function onAction(
-  state: RemoteState,
-  action: MediaAction,
-  at: number,
-  running: boolean,
-): { state: RemoteState; effects: readonly RemoteEffect[] }
-
-/** Two seconds after the last tap, per spec.md — the same window as V3. */
-export function onIdle(
-  state: RemoteState,
-  now: number,
-): { state: RemoteState; effects: readonly RemoteEffect[] }
+/** Undefined where there is no document — a server render has nothing to claim
+ *  a session with, and the caller returns a no-op teardown. */
+export function createSilentMedia(): HTMLAudioElement | undefined
 ```
 
-**Why `running` is an argument rather than state.** The transport already owns
-whether the click is running; duplicating it here would be a second copy to
-drift. The machine decides what *should* happen and the caller applies it.
+### `src/features/metronome/hooks/useRemoteControl.ts`
 
-### The cowbell
-
-| | |
-| :-- | :-- |
-| Ships | `cowbell.flac`, copied byte-identical from the sibling pack |
-| Licence | **CC0** (VCSL) — no credit string, unlike any MuldjordKit voice |
-| Velocity | its own layer nominal, fed through V2's existing `gainFor` |
-| Used for | entering tap mode, and leaving it. Nothing else |
-
-The exact velocity is a musical decision and goes to `musician`, not decided
-here. The cue must be audibly *not* the click at practice volume, which is the
-whole point of choosing a different instrument.
+```ts
+/** `armed` is the gesture gate. Nothing binds and nothing plays until it is
+ *  true, because a browser refuses to let an untouched page play and the media
+ *  session is then never claimed at all. The composer sets it on the first
+ *  on-screen press. */
+export function useRemoteControl(
+  onPress: () => void,
+  options?: MediaKeysOptions & { armed?: boolean },
+): void
+```
 
 ## Epics
 
-### Epic 0 — the probe
+### Epic 1 — the speaker starts and stops the click
 
-**Runs first, alone, and gates everything below.** No other track starts until
-it has reported, because its answer decides whether Epic 1 has a tapping half
-at all.
+One track. The probe removed the other three, so per
+`/implement-vibe-with-docs` §4 this builds in the lead rather than being
+dispatched.
 
-#### Track P — the diagnostic page
-
-* **Role:** `implementer`
-* **Owns:** `public/v4-probe.html`
-* **Needs to start:** nothing
-
-One self-contained HTML file — inline style, inline script, no imports, no
-build step, outside `src/` so no lint zone binds it. It renders a log and
-almost nothing else.
-
-1. Register `play`, `pause`, `nexttrack`, `previoustrack` and `stop` handlers,
-   each in its own `try`/`catch`, and print which ones the platform accepted.
-2. Run with an `AudioContext` only, then with a silent looping `<audio>`, and
-   report which combination actually receives a button press. **This is the
-   documented uncertainty from `spec.md`** — settle it by observation.
-3. Log every action that arrives with `performance.now()`, the gap in
-   milliseconds since the previous one, and the bpm that gap implies.
-4. Show the last dozen events at a size readable on a phone across a room,
-   because the phone is in your hand and the speaker is what you are pressing.
-
-**There is no test for this file and there should not be.** It asserts nothing;
-it reports what hardware did. The build's checks do not cover it and the suite
-never loads it.
-
-**Done when:** a person has run it on a phone paired to a speaker, pressed the
-button in the four shapes `spec.md` names, and written the numbers into
-`spec.md` under `## What the probe found`.
-
-### Epic 1 — the speaker as a remote
-
-**Gated on Epic 0.** If the probe says per-beat tapping does not survive, Tracks
-A, C and D shrink: no tap delegation, no mode machine, no cowbell — Track B
-alone, plus play/pause wiring, and an ADR recording the finding.
-
-#### Track A — the mode machine
+#### Track A — the media key seam and its wiring
 
 * **Role:** `implementer`
-* **Owns:** `src/features/metronome/lib/remote/remoteMode.ts` and its test
-* **Needs to start:** the contract, plus V3's `lib/tap/`
+* **Owns:** `src/features/metronome/lib/remote/`,
+  `src/features/metronome/hooks/useRemoteControl.ts`, and the one line in
+  `components/Metronome.tsx` that calls the hook
 
-1. **red** — `play` while stopped yields `start`; `pause` while running yields
-   `stop`; neither touches the mode.
-2. **green** — the transport branch.
-3. **red** — `nexttrack` yields `cue: entered` and moves to `tapping`.
-4. **green** — the mode switch.
-5. **red** — in `tapping`, four actions of *either* kind are four taps, and the
-   fourth yields `tempo`. A single press in tap mode is a tap, never a start.
-6. **green** — delegate to `addTap`.
-7. **red** — `onIdle` two seconds after the last tap yields `cue: left` and
-   returns to `transport` with the tempo untouched; a lone tap sets nothing.
-8. **green** — the expiry.
-9. **red** — a refused tempo still leaves tap mode and still cues, so the player
-   is never stranded in a mode by tapping something out of range.
-10. **green** — handle `refused`.
-
-#### Track B — media keys and the silent element
-
-* **Role:** `implementer`
-* **Owns:** `src/features/metronome/lib/remote/mediaKeys.ts`,
-  `src/features/metronome/lib/remote/silentMedia.ts`, their tests, and the
-  silent asset under `public/`
-* **Needs to start:** the `MediaKeys` contract
-
-1. **red** — `bind` registers `play`, `pause` and `nexttrack` against a fake
-   `MediaSession`, and returns a teardown that clears all three.
+1. **red** — `bindMediaKeys` registers a `pause` handler against a fake
+   `MediaSession` and its teardown clears it.
 2. **green** — the binding.
-3. **red** — an action whose registration throws is skipped, the rest still
-   bind, and `supported` reports honestly.
-4. **green** — the `try`/`catch` per action, per the platform guidance.
-5. **red** — the silent element plays on start and pauses on stop, and its
-   teardown releases it.
-6. **green** — the element.
+3. **red** — a session that throws on registration is survived: no throw
+   escapes, `isSupported` reports false, teardown is still safe to call. This is
+   the Firefox path and it must be silent, not broken.
+4. **green** — the `try`/`catch`.
+5. **red** — pressing the button calls `onPress` once per press.
+6. **green** — the handler.
+7. **red** — the silent media is eight seconds, plays on bind and is released on
+   teardown.
+8. **green** — `silentMedia.ts`.
+9. **red** — the hook toggles the transport: press once starts, press again
+   stops; unmounting unbinds and releases the media.
+10. **green** — the hook.
 
-#### Track C — the cowbell
-
-* **Role:** `musician`, then `implementer`
-* **Owns:** `public/samples/cowbell.flac`, its provenance row, and the cue's
-  velocity constant
-* **Needs to start:** nothing
-
-The `musician` decides the cue's velocity against `docs/music.md` and states
-what a listener should hear; the `implementer` applies it. It must be audible
-over the click at practice volume without being startling.
-
-#### Track D — wiring
-
-* **Role:** `implementer`
-* **Owns:** `src/features/metronome/hooks/useRemoteControl.ts` and its test
-* **Needs to start:** all three contracts
-
-1. **red** — actions drive the machine and the effects reach the transport;
-   unmount tears down every handler and the silent element.
-2. **green** — the hook.
-
-## Waves
-
-* **Wave 0:** Track P, alone. **Stop here and report.** The probe's answer is
-  the user's to read before anything else is dispatched.
-* **Wave 1 (parallel):** Track A, Track B, Track C — scope depends on Wave 0
-* **Wave 2:** Track D — needs all three
+**Not in this change, and the reason is on the record:** `nexttrack`, the mode
+machine, the cowbell, any tap delegation. See `spec.md` § *What V4 is now*.
 
 ## Checks
 
@@ -215,10 +130,11 @@ over the click at practice volume without being startling.
 
 | Risk | What holds it |
 | :-- | :-- |
-| **Per-beat tapping is eaten by the firmware** | **Epic 0 answers this before anything is built.** It stopped being a risk the moment it became the first thing the change does; if the answer is no, V4 ships play/stop only and Epic 1 shrinks rather than being rewritten |
+| ~~Per-beat tapping is eaten by the firmware~~ | **Confirmed by the probe.** No longer a risk; it is a deleted feature |
+| Firefox users see a feature that silently does nothing | By design, and `## Done when` 3 pins it: the app must behave exactly as before when the session is refused. There is no message, because there is nothing the player can do about it |
 | The probe itself is wrong, and we build on a bad reading | It reports raw numbers — action names and millisecond gaps — rather than a verdict. A reader can disagree with the conclusion while trusting the log |
 | A double press may not produce `nexttrack` on every device | `supported` reports what bound; the hardware check covers what actually fires. If nothing arrives, the mode is unreachable and that is the finding |
-| The lock-screen notification surprises the player | Named in `## Decided` as a consequence, not a defect. Worth a look during the hardware check |
+| The lock-screen notification surprises the player | Named in `## Decided` as a consequence, not a defect — and now confirmed to be the price of the feature working at all |
 | Another audio app stops the metronome | Same — inherent to owning a media session |
 | The silent element is throttled or paused by the OS | The click is Web Audio and unaffected; only the buttons would stop working. V2's stall fix already covers the scheduler under throttling |
 | A second voice breaks the velocity model | V2's `gainFor` is layer-relative precisely so a second voice needs no new maths. Track C proves it with a real second nominal |

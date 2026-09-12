@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { app } from '@/lib/snippets'
 import { useClickTransport } from '../hooks/useClickTransport'
+import { useRemoteControl } from '../hooks/useRemoteControl'
 import { clampTempo } from '../lib/click/tempo'
 import {
   addTap,
@@ -54,6 +55,7 @@ export function Metronome({
   const [bpm, setBpm] = useState(DEFAULT_BPM)
   const [running, setRunning] = useState(false)
   const [beat, setBeat] = useState<number | null>(null)
+  const [armed, setArmed] = useState(false)
   const attempt = useRef({
     state: EMPTY_TAPS as TapState,
     timer: null as ReturnType<typeof setTimeout> | null,
@@ -77,7 +79,20 @@ export function Metronome({
     [click],
   )
 
+  /**
+   * Any touch of any control arms the speaker's button.
+   *
+   * A browser will not let a page that has never been interacted with play,
+   * and without playing we cannot claim a media session — so the speaker is
+   * dead until the player touches *something*. Which control they touch first
+   * is not ours to predict: they might tap a tempo, or drag the slider, before
+   * ever pressing Start.
+   */
+  const arm = () => setArmed(true)
+
   const toggle = () => {
+    arm()
+
     if (running) {
       click.stop()
       setBeat(null)
@@ -103,6 +118,8 @@ export function Metronome({
    * taps make a better answer rather than overrunning a count.
    */
   const tap = () => {
+    arm()
+
     const live = attempt.current
     const at = now()
 
@@ -125,7 +142,15 @@ export function Metronome({
     }, windowFor(next) * 1000)
   }
 
+  // The speaker's button is the Start/Stop control, pressed from across the
+  // room. Armed by the first on-screen press, because a browser will not let a
+  // page claim a media session before the player has touched it. Does nothing
+  // at all on a browser that refuses the session.
+  useRemoteControl(toggle, { armed })
+
   const changeTempo = (next: number) => {
+    arm()
+
     const tempo = clampTempo(next)
     setBpm(tempo)
     click.setTempo(tempo)

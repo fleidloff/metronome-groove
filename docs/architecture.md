@@ -74,6 +74,7 @@ The arrows, each with an import behind it:
 | :-- | :-- |
 | `components/` → `lib/click/` | the composer reads `tempo.ts`'s range |
 | `components/` → `lib/tap/` | the composer records taps and commits on the silence |
+| `hooks/` → `lib/remote/` | `useRemoteControl.ts` binds the speaker's button |
 | `lib/tap/` → `lib/click/` | `tapTempo.ts` reads `MIN_BPM`/`MAX_BPM` to refuse a tempo it cannot play |
 | `hooks/` → `lib/click/` | `useClickTransport.ts` builds the scheduler and the audio clock |
 | `hooks/` → `components/` | **type-only**: the hook imports `Transport` from `Metronome.tsx`, pointing at its own consumer. No zone forbids it and it erases at build, but the contract would sit better in `lib/click/` |
@@ -82,6 +83,13 @@ The arrows, each with an import behind it:
 
 Zone 6 enforces the one that matters: nothing in `lib/` reaches back up into
 UI, a hook or the store.
+
+**`lib/remote/` is the slice's third concern folder**, and the only one that
+touches a platform API the app cannot schedule around. It owns the media
+session and the silent element that claims it; nothing else in the slice knows
+either exists. Why it is shaped that way — and why the feature is absent on
+Firefox rather than degraded — is
+[ADR 0004](adr/0004-bluetooth-media-buttons.md).
 
 **`lib/tap/` → `lib/click/` is the first arrow between two concern folders, and
 nothing guards its direction.** The reverse — `lib/click/` importing `lib/tap/`

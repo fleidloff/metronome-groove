@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { app, metronome } from '@/lib/snippets'
 import { MAX_BPM, MIN_BPM } from '../lib/click/tempo'
 import {
@@ -487,6 +487,118 @@ describe(app.name, () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+  })
+
+  describe('the speaker as a remote', () => {
+    /** Stands in for navigator.mediaSession, which jsdom does not have. */
+    const stubSession = () => {
+      const handlers = new Map<string, () => void>()
+      const session = {
+        setActionHandler: (action: string, handler: (() => void) | null) => {
+          if (handler === null) handlers.delete(action)
+          else handlers.set(action, handler)
+        },
+        metadata: null,
+        playbackState: 'none',
+      }
+
+      vi.stubGlobal('navigator', { ...globalThis.navigator, mediaSession: session })
+      return {
+        // Wrapped in act: the press sets state, and without flushing it the
+        // next press would read a stale `running` and start twice.
+        press: () => act(() => handlers.get('pause')?.()),
+        bound: () => handlers.size,
+      }
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    /** The gesture that lets the page claim a media session at all. */
+    const touchThePage = () =>
+      fireEvent.click(screen.getByRole('button', { name: metronome.start }))
+
+    it('does nothing until the page has been touched', () => {
+      // A browser refuses to let an untouched page play, so the session is
+      // never claimed and the button is not ours. Binding on mount produced a
+      // NotAllowedError in Chrome and a feature that silently did not work.
+      const device = stubSession()
+      const { transport, start } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(device.bound()).toBe(0)
+      device.press()
+
+      expect(start).not.toHaveBeenCalled()
+    })
+
+    it('is armed by tapping a tempo, not only by Start', () => {
+      const device = stubSession()
+      const { transport, start } = fakeTransport()
+      render(<Metronome transport={transport} now={clockOf([10, 10.4])} />)
+
+      fireEvent.click(screen.getByRole('button', { name: metronome.tap }))
+      expect(device.bound()).toBe(1)
+
+      device.press()
+      expect(start).toHaveBeenCalled()
+    })
+
+    it('is armed by the slider, which is a gesture like any other', () => {
+      const device = stubSession()
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(screen.getByRole('slider', { name: metronome.tempo }), {
+        target: { value: '140' },
+      })
+
+      expect(device.bound()).toBe(1)
+    })
+
+    it('starts and stops the click from the speaker button, once armed', () => {
+      const device = stubSession()
+      const { transport, start, stop } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      touchThePage()
+      expect(start).toHaveBeenCalledTimes(1)
+
+      device.press()
+      expect(stop).toHaveBeenCalledTimes(1)
+
+      device.press()
+      expect(start).toHaveBeenCalledTimes(2)
+    })
+
+    it('shows the button press as the same state the on-screen control shows', () => {
+      const device = stubSession()
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      touchThePage()
+      device.press()
+      device.press()
+
+      // Pressing the speaker must leave the page agreeing with itself, or the
+      // control says Start while the click is running.
+      expect(
+        screen.getByRole('button', { name: metronome.stop }),
+      ).toBeInTheDocument()
+    })
+
+    it('releases the button when the page goes away', () => {
+      const device = stubSession()
+      const { transport } = fakeTransport()
+      const view = render(<Metronome transport={transport} />)
+
+      touchThePage()
+      expect(device.bound()).toBe(1)
+      view.unmount()
+
+      expect(device.bound()).toBe(0)
     })
   })
 
