@@ -183,10 +183,18 @@ One epic. The change ships one thing and is verified as one thing.
 * **Needs to start:** `MuteSet` and `audibleHits` from the contract above
 
 1. **red** — with `hat` muted, no step of any bar yields `hatClosed` or
-   `hatOpen`; with `snare` muted in bossa the clave is gone from every bar **and
-   the fill's two snare notes with it**; `mutes` is re-read each call, so a
-   change lands on the next step without the source being rebuilt; with
-   `NO_MUTES` the render is bit-identical to today.
+   `hatOpen`; with `snare` muted in bossa the fill's two snare notes go **and
+   the clave survives**; `mutes` is re-read each call, so a change lands on the
+   next step without the source being rebuilt; with `NO_MUTES` the render is
+   bit-identical to today.
+
+   > **Corrected at build time, 2026-09-12.** This step read *"with `snare`
+   > muted in bossa the clave is gone from every bar and the fill's two snare
+   > notes with it"*. That is backwards and an implementer following it
+   > literally would have built a bug. The clave is on `claves`, which is in no
+   > `KIT_VOICES_OF` entry, so **no toggle can reach it** — which is the same
+   > property that keeps the click and the count-in outside muting. See
+   > `spec.md` § Amended at build time.
 2. **green** — compose `audibleHits` over the existing `hitsAt`.
 
 #### Track E — The row, and the wiring
@@ -223,10 +231,9 @@ One epic. The change ships one thing and is verified as one thing.
 
 ## Risks
 
-* **The tree does not typecheck today.** `useClickTransport.ts` declares
-  `GROOVES` over `Exclude<SourceId, 'click'>` but has no `'bossa-nova'` entry,
-  while `SOURCE_IDS` now lists it. V11 is mid-flight. V15 cannot show a green
-  run until that is closed, and Track E edits the same file.
+* ~~**The tree does not typecheck today.**~~ **Spent.** V11 was mid-flight when
+  this was written. V11, V12, V13 and V16 have all landed; the tree was green
+  before V15 started.
 * **ADR 0010 needs one sentence.** Its invariants bind the written figure, not
   the audible result — forced, since invariant 1 dies on a kick mute and
   invariant 2 on a hat mute. The code already reads this way and does not
@@ -235,9 +242,9 @@ One epic. The change ships one thing and is verified as one thing.
   lists "Per-voice mute grid", and `docs/adr/0006` uses per-beat-only muting as
   part of its argument that a melodic voice is inescapable. 0006's key argument
   survives untouched; both records need amending.
-* **A muted `rim` is an exact voice.** `BOSSA_NOVA_HUMANIZE` sets
-  `exactVoices: ['rim']`. Removing it has no timing consequence — nothing is
-  displaced differently — but a test that asserts bossa's timing must not assume
-  the rim is present.
+* ~~**A muted `rim` is an exact voice.**~~ **Spent.** This read
+  *"`BOSSA_NOVA_HUMANIZE` sets `exactVoices: ['rim']`"*. It sets
+  `exactVoices: ['claves']`, and no groove in the app plays `rim` at all — V11's
+  listening pass moved the clave off it. Nothing here can bite.
 * **The count-in must stay unfiltered.** It is `claves`, which appears in no
   `KIT_VOICES_OF` entry, so this holds by construction. A test pins it.

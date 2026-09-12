@@ -8,14 +8,18 @@ import { FinePrint } from '@/components/typography/FinePrint'
 import { app } from '@/lib/snippets'
 import { useClickTransport } from '../hooks/useClickTransport'
 import { useRemoteControl } from '../hooks/useRemoteControl'
+import { GROOVES } from '../lib/groove/grooves/registry'
+import { NO_MUTES, type MuteSet } from '../lib/mute/voices'
 import type { SourceId } from '../lib/transport/source'
 import {
   DEFAULT_BPM,
   DEFAULT_COUNT_IN,
   DEFAULT_FILLS,
+  DEFAULT_MUTES,
   DEFAULT_SOURCE,
   readSetup,
   writeSetup,
+  type StoredMutes,
 } from '../lib/setup/storedSetup'
 import { clampTempo } from '../lib/transport/tempo'
 import {
@@ -28,6 +32,7 @@ import {
 import { BeatRow } from './BeatRow'
 import { CountInToggle } from './CountInToggle'
 import { FillsToggle } from './FillsToggle'
+import { MuteRow } from './MuteRow'
 import { SourceSelect } from './SourceSelect'
 import { StartStopButton } from './StartStopButton'
 import { TapTempoButton } from './TapTempoButton'
@@ -44,6 +49,7 @@ export interface Transport {
   onLoadingChange?(listener: (loading: boolean) => void): () => void
   setFills?(on: boolean): void
   setCountIn?(on: boolean): void
+  setMutes?(mutes: MuteSet): void
 }
 
 const systemClock = () => performance.now() / 1000
@@ -64,7 +70,9 @@ export function Metronome({
   const [source, setSource] = useState<SourceId>(DEFAULT_SOURCE)
   const [fills, setFills] = useState(DEFAULT_FILLS)
   const [countIn, setCountIn] = useState(DEFAULT_COUNT_IN)
+  const [mutes, setMutes] = useState<StoredMutes>(DEFAULT_MUTES)
   const [restored, setRestored] = useState(false)
+  const muted = mutes[source] ?? NO_MUTES
   const told = useRef<SourceId>(DEFAULT_SOURCE)
   const [loading, setLoading] = useState(false)
   const attempt = useRef({
@@ -148,6 +156,7 @@ export function Metronome({
     setSource(stored.source)
     setFills(stored.fills)
     setCountIn(stored.countIn)
+    setMutes(stored.mutes)
     setRestored(true)
   }, [])
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -160,8 +169,8 @@ export function Metronome({
 
   useEffect(() => {
     if (!restored) return
-    writeSetup({ bpm, source, fills, countIn })
-  }, [restored, bpm, source, fills, countIn])
+    writeSetup({ bpm, source, fills, countIn, mutes })
+  }, [restored, bpm, source, fills, countIn, mutes])
 
   useEffect(() => {
     click.setFills?.(fills)
@@ -170,6 +179,10 @@ export function Metronome({
   useEffect(() => {
     click.setCountIn?.(countIn)
   }, [countIn, click])
+
+  useEffect(() => {
+    click.setMutes?.(muted)
+  }, [muted, click])
 
   useRemoteControl(toggle, { armed })
 
@@ -186,6 +199,11 @@ export function Metronome({
   const changeCountIn = (next: boolean) => {
     arm()
     setCountIn(next)
+  }
+
+  const changeMutes = (next: MuteSet) => {
+    arm()
+    setMutes({ ...mutes, [source]: next })
   }
 
   const changeTempo = (next: number) => {
@@ -211,6 +229,11 @@ export function Metronome({
           <>
             <FillsToggle checked={fills} onChange={changeFills} />
             <CountInToggle checked={countIn} onChange={changeCountIn} />
+            <MuteRow
+              groove={GROOVES[source]}
+              mutes={muted}
+              onChange={changeMutes}
+            />
           </>
         )}
         <FinePrint>{app.sampleCredit}</FinePrint>

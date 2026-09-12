@@ -3,8 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { Checkbox } from './Checkbox'
 
 const LABEL = 'Extras'
+const ICON = '✱'
 
 const noop = () => {}
+
+const icon = <span aria-hidden="true">{ICON}</span>
+
+const rowOf = (control: HTMLElement) => control.closest('label')
 
 describe('the checkbox', () => {
   it('takes its accessible name from the label it is given', () => {
@@ -75,5 +80,56 @@ describe('the checkbox', () => {
       'rounded-card',
       'text-xl',
     )
+  })
+
+  describe('with an icon', () => {
+    it('renders the icon before the label, not after it', () => {
+      render(
+        <Checkbox label={LABEL} checked={false} onChange={noop} icon={icon} />,
+      )
+
+      const row = rowOf(screen.getByRole('checkbox', { name: LABEL }))
+
+      expect(row).toHaveTextContent(`${ICON}${LABEL}`)
+    })
+
+    it('still takes its accessible name from the label alone', () => {
+      render(
+        <Checkbox label={LABEL} checked={false} onChange={noop} icon={icon} />,
+      )
+
+      expect(screen.getByRole('checkbox', { name: LABEL })).toBeVisible()
+    })
+
+    it('renders nothing in front of the label when it is given no icon', () => {
+      render(<Checkbox label={LABEL} checked={false} onChange={noop} />)
+
+      const row = rowOf(screen.getByRole('checkbox', { name: LABEL }))
+
+      expect(row?.textContent).toBe(LABEL)
+    })
+  })
+
+  describe('when disabled', () => {
+    it('reports the refusal to assistive tech rather than only looking dead', () => {
+      render(<Checkbox label={LABEL} checked onChange={noop} disabled />)
+
+      expect(screen.getByRole('checkbox', { name: LABEL })).toBeDisabled()
+    })
+
+    it('refuses the press instead of reporting a change it would have to undo', () => {
+      const onChange = vi.fn()
+      render(<Checkbox label={LABEL} checked onChange={onChange} disabled />)
+
+      fireEvent.click(screen.getByRole('checkbox', { name: LABEL }))
+
+      expect(onChange).not.toHaveBeenCalled()
+    })
+
+    it('is enabled when it is not told otherwise', () => {
+      render(<Checkbox label={LABEL} checked={false} onChange={noop} />)
+
+      expect(screen.getByRole('checkbox', { name: LABEL })).toBeEnabled()
+    })
   })
 })

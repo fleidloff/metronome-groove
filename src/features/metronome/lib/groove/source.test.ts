@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
-import type { Hit, Source } from '../transport/source'
-import { BARS_PER_CYCLE, FILL_BAR, barIndexFor, hitsAt } from './cycle'
+import { type MuteSet, NO_MUTES } from '../mute/voices'
+import type { Hit, Source, VoiceName } from '../transport/source'
+import { BARS_PER_CYCLE, FILL_BAR, LIGHT_BAR, barIndexFor, hitsAt } from './cycle'
 import { BOSSA_NOVA } from './grooves/bossaNova'
 import type { GrooveDefinition } from './grooves/definition'
 import { ROCK } from './grooves/rock'
@@ -332,5 +333,157 @@ describe('an exact voice under a swung groove', () => {
       twin.displace!(KICK, 3, SECONDS_PER_STEP),
     )
     expect(source.displace!(KICK, 3, SECONDS_PER_STEP)).not.toBe(LILT * (SECONDS_PER_STEP / 2))
+  })
+})
+
+/** specs/15-per-voice-mute */
+describe('the mute set the source filters each step through', () => {
+  const HAT_VOICES: readonly VoiceName[] = ['hatClosed', 'hatOpen']
+  const HAT: MuteSet = ['hat']
+  const SNARE: MuteSet = ['snare']
+  const HAT_AND_SNARE: MuteSet = ['hat', 'snare']
+
+  const PROBES: readonly Hit[] = [
+    { voice: 'kick', velocity: 0.95 },
+    { voice: 'snare', velocity: 0.95 },
+    { voice: 'hatClosed', velocity: 0.9 },
+    { voice: 'hatOpen', velocity: 0.8 },
+    { voice: 'claves', velocity: 0.5 },
+  ]
+
+  const cycleSteps = (groove: GrooveDefinition) => groove.steps * BARS_PER_CYCLE
+
+  const renderOver = (source: Source, from: number, count: number) =>
+    Array.from({ length: count }, (_, offset) => source.hitsAt(from + offset))
+
+  const voicesIn = (render: readonly (readonly Hit[])[]) =>
+    render.flat().map((hit) => hit.voice)
+
+  it('yields no hatClosed and no hatOpen at any step of the cycle while hat is muted', () => {
+    for (const groove of [ROCK, STRAIGHT_FUNK, BOSSA_NOVA, SHUFFLE]) {
+      const steps = cycleSteps(groove)
+      const audible = createGrooveSource(groove)
+      const thinned = createGrooveSource(groove, { mutes: () => HAT })
+
+      const open = renderOver(audible, 0, steps)
+      const muted = renderOver(thinned, 0, steps)
+
+      expect(voicesIn(open).filter((voice) => HAT_VOICES.includes(voice)).length, groove.id)
+        .toBeGreaterThan(0)
+      expect(voicesIn(muted).filter((voice) => HAT_VOICES.includes(voice)), groove.id).toEqual([])
+      expect(muted, groove.id).toEqual(
+        open.map((hits) => hits.filter((hit) => !HAT_VOICES.includes(hit.voice))),
+      )
+    }
+  })
+
+  it('takes the light bar\'s hatOpen and the fill bar\'s hats with it, the two bars a voice leaks from', () => {
+    const audible = createGrooveSource(ROCK)
+    const thinned = createGrooveSource(ROCK, { mutes: () => HAT })
+
+    for (const bar of [LIGHT_BAR, FILL_BAR]) {
+      const from = bar * ROCK.steps
+
+      expect(barIndexFor(from, ROCK.steps), `bar ${bar}`).toBe(bar)
+      expect(voicesIn(renderOver(audible, from, ROCK.steps)), `bar ${bar}`).toContain('hatOpen')
+      expect(
+        voicesIn(renderOver(thinned, from, ROCK.steps)).filter((voice) =>
+          HAT_VOICES.includes(voice),
+        ),
+        `bar ${bar}`,
+      ).toEqual([])
+    }
+  })
+
+  it('loses bossa\'s two fill snares to a snare mute and keeps the clave, which no toggle reaches', () => {
+    const from = FILL_BAR * BOSSA_NOVA.steps
+    const audible = createGrooveSource(BOSSA_NOVA)
+    const thinned = createGrooveSource(BOSSA_NOVA, { mutes: () => SNARE })
+
+    const stepsSounding = (render: readonly (readonly Hit[])[], voice: VoiceName) =>
+      render.flatMap((hits, step) => (hits.some((hit) => hit.voice === voice) ? [step] : []))
+
+    expect(stepsSounding(renderOver(audible, from, BOSSA_NOVA.steps), 'snare')).toEqual([13, 15])
+    expect(stepsSounding(renderOver(thinned, from, BOSSA_NOVA.steps), 'snare')).toEqual([])
+
+    const steps = cycleSteps(BOSSA_NOVA)
+    const clavesOpen = stepsSounding(renderOver(audible, 0, steps), 'claves')
+    const clavesMuted = stepsSounding(renderOver(thinned, 0, steps), 'claves')
+
+    expect(clavesOpen.length).toBeGreaterThan(0)
+    expect(clavesMuted).toEqual(clavesOpen)
+  })
+
+  it('reads the mute set per step, so a toggle lands on the next unqueued step', () => {
+    const reads: MuteSet[] = []
+    let mutes: MuteSet = NO_MUTES
+    const source = createGrooveSource(ROCK, {
+      mutes: () => {
+        reads.push(mutes)
+        return mutes
+      },
+    })
+
+    const full = source.hitsAt(0)
+    mutes = HAT
+    const thinned = source.hitsAt(0)
+
+    expect(reads).toEqual([NO_MUTES, HAT])
+    expect(full).toEqual(hitsAt(ROCK, 0, true))
+    expect(thinned).toEqual(full.filter((hit) => !HAT_VOICES.includes(hit.voice)))
+    expect(thinned).not.toEqual(full)
+  })
+
+  it('renders every step of two cycles exactly as an unmuted source does under NO_MUTES', () => {
+    for (const groove of [ROCK, STRAIGHT_FUNK, BOSSA_NOVA, SHUFFLE]) {
+      const steps = cycleSteps(groove) * 2
+      let reads = 0
+      const today = createGrooveSource(groove)
+      const empty = createGrooveSource(groove, {
+        mutes: () => {
+          reads += 1
+          return NO_MUTES
+        },
+      })
+
+      for (let step = 0; step < steps; step += 1) {
+        expect(empty.hitsAt(step), `${groove.id} step ${step}`).toEqual(today.hitsAt(step))
+      }
+
+      expect(reads, groove.id).toBe(steps)
+    }
+  })
+
+  it('moves no hit in time and draws no other take, muted or not', () => {
+    const plain = createGrooveSource(ROCK)
+
+    for (const mutes of [NO_MUTES, HAT_AND_SNARE]) {
+      const source = createGrooveSource(ROCK, { mutes: () => mutes })
+
+      for (let step = 0; step < cycleSteps(ROCK); step += 1) {
+        expect(source.takeStep!(step), `${mutes.length} muted, step ${step}`).toBe(
+          plain.takeStep!(step),
+        )
+
+        for (const hit of PROBES) {
+          expect(
+            source.displace!(hit, step, SECONDS_PER_STEP),
+            `${hit.voice} at ${step}`,
+          ).toBe(plain.displace!(hit, step, SECONDS_PER_STEP))
+          expect(source.trim!(hit, step), `${hit.voice} at ${step}`).toBe(
+            plain.trim!(hit, step),
+          )
+        }
+
+        for (const hit of source.hitsAt(step)) {
+          expect(takeFor(hit, step), `${hit.voice} at ${step}`).toBe(
+            takeFor(
+              plain.hitsAt(step).find((other) => other.voice === hit.voice)!,
+              step,
+            ),
+          )
+        }
+      }
+    }
   })
 })

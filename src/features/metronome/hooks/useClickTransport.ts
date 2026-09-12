@@ -10,13 +10,9 @@ import {
 import { CLICK_SOURCE } from '../lib/click/source'
 import { KIT, layerFor, sampleUrlFor, type KitVoiceName } from '../lib/groove/kit'
 import { createCountInSource } from '../lib/countIn/source'
-import { BOSSA_NOVA } from '../lib/groove/grooves/bossaNova'
-import type { GrooveDefinition } from '../lib/groove/grooves/definition'
-import { ROCK } from '../lib/groove/grooves/rock'
-import { SECOND_LINE } from '../lib/groove/grooves/secondLine'
-import { SHUFFLE } from '../lib/groove/grooves/shuffle'
-import { STRAIGHT_FUNK } from '../lib/groove/grooves/straightFunk'
+import { GROOVES } from '../lib/groove/grooves/registry'
 import { createGrooveSource } from '../lib/groove/source'
+import { NO_MUTES, type MuteSet } from '../lib/mute/voices'
 import { createAudioClock, type VoiceBank } from '../lib/transport/audioClock'
 import {
   createScheduler,
@@ -67,6 +63,9 @@ export type AudioFactory = (
   /** Latched at Start rather than read live, so the answer cannot change
    *  inside a run — it decides where the groove's timeline begins. */
   countIn: () => boolean,
+  /** Read per step like `variations`, so a voice goes quiet on the next
+   *  unqueued step rather than on the next run. */
+  mutes: () => MuteSet,
 ) => Promise<Audio>
 
 /**
@@ -135,19 +134,6 @@ const growKitBank = (context: AudioContext, bank: VoiceBank) => {
   }
 }
 
-/**
- * Every groove, by the id that names it. Typed over `SourceId` minus the click,
- * so a fourth source is a compile error here rather than a groove that silently
- * falls back to another one.
- */
-const GROOVES: Record<Exclude<SourceId, 'click'>, GrooveDefinition> = {
-  'bossa-nova': BOSSA_NOVA,
-  rock: ROCK,
-  shuffle: SHUFFLE,
-  'straight-funk': STRAIGHT_FUNK,
-  'second-line': SECOND_LINE,
-}
-
 /** What a source costs to load. The click declares none, and a groove declares
  *  its own — which is what keeps `rim` off every wire in the app. */
 const voicesFor = (id: SourceId): readonly KitVoiceName[] =>
@@ -167,11 +153,12 @@ export const sourceFor = (
   id: SourceId,
   variations: () => boolean,
   countIn: () => boolean,
+  mutes: () => MuteSet = () => NO_MUTES,
 ): Source =>
   id === 'click'
     ? CLICK_SOURCE
     : createCountInSource(
-        createGrooveSource(GROOVES[id], { variations }),
+        createGrooveSource(GROOVES[id], { variations, mutes }),
         countIn,
       )
 
@@ -180,7 +167,13 @@ export const sourceFor = (
  * and stopped — silent, but remembered — so a tapped tempo can bring it back
  * on its own rather than asking the player to press start a second time.
  */
-export const buildRealAudio: AudioFactory = async (bpm, id, variations, countIn) => {
+export const buildRealAudio = async (
+  bpm: number,
+  id: SourceId,
+  variations: () => boolean,
+  countIn: () => boolean,
+  mutes: () => MuteSet = () => NO_MUTES,
+): Promise<Audio> => {
   const context = new AudioContext()
 
   try {
@@ -198,7 +191,7 @@ export const buildRealAudio: AudioFactory = async (bpm, id, variations, countIn)
       createScheduler({
         clock,
         bpm,
-        source: sourceFor(forId, variations, countIn),
+        source: sourceFor(forId, variations, countIn, mutes),
       })
 
     const audio: Audio = {
@@ -269,6 +262,12 @@ export function useClickTransport(
      * one run — the count bar decides where the groove's timeline begins.
      */
     countInArmed: false,
+    /**
+     * Which voices are silent. Held here rather than closed over at build time,
+     * like `fills`: the getter handed to the source reads this field, so a
+     * press lands on the next step the scheduler queues.
+     */
+    mutes: NO_MUTES as MuteSet,
     /** Whether a device is being built right now. The start control reads it,
      *  so a press during the load says it is waiting instead of sounding a
      *  silent bar. */
@@ -385,6 +384,7 @@ export function useClickTransport(
         live.sourceId,
         () => live.fills,
         () => live.countInArmed,
+        () => live.mutes,
       ).then(
         (built) => {
           settle()
@@ -571,6 +571,11 @@ export function useClickTransport(
        */
       setCountIn(on: boolean) {
         live.countIn = on
+      },
+
+      /** One field, like `setFills`, and read by the source per queued step. */
+      setMutes(next: MuteSet) {
+        live.mutes = next
       },
 
       onBeat(listener: (beat: number) => void) {

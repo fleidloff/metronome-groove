@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest'
  */
 const DIR = join(process.cwd(), 'src/features/metronome/lib/groove/grooves')
 
-const MACHINERY = ['definition.ts', 'shared.ts']
+const MACHINERY = ['definition.ts', 'shared.ts', 'registry.ts']
 
 const definitionFiles = readdirSync(DIR)
   .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
@@ -45,6 +45,22 @@ describe('a groove reaches sideways for nothing', () => {
 
   it.each(definitionFiles)('%s draws only on the shape and the shared record', (name) => {
     expect(importsOf(name).sort()).toEqual(['./definition', './shared', '@/lib/steps'])
+  })
+
+  /**
+   * The registry is the one file here that may import every groove, because
+   * naming them all is its whole job. It lives beside the definitions rather
+   * than inside the hook that used to hold it privately: V15's mute row needs a
+   * groove by its `SourceId` and a component cannot reach into a hook for one.
+   */
+  it('lets the registry name every groove, which is the only file that may', () => {
+    const registry = importsOf('registry.ts')
+
+    for (const name of definitionFiles) {
+      expect(registry, `registry does not name ${name}`).toContain(
+        `./${name.replace(/\.ts$/u, '')}`,
+      )
+    }
   })
 
   it('keeps the shared record under a name that is no groove’s', () => {

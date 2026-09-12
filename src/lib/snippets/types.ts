@@ -22,5 +22,10 @@ export type MetronomeSnippets = {
   secondLine: string
   fills: string
   countIn: string
+  voices: string
+  kick: string
+  snare: string
+  hat: string
+  enableAll: string
   loading: string
 }

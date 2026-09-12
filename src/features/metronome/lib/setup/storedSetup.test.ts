@@ -4,10 +4,12 @@ import {
   DEFAULT_BPM,
   DEFAULT_COUNT_IN,
   DEFAULT_FILLS,
+  DEFAULT_MUTES,
   DEFAULT_SETUP,
   DEFAULT_SOURCE,
   SETUP_KEY,
   SETUP_VERSION,
+  type StoredMutes,
   readSetup,
   writeSetup,
 } from './storedSetup'
@@ -42,21 +44,24 @@ const stored = (value: unknown) => {
 }
 
 describe('a first visit', () => {
-  it('opens at 100 bpm on the click, with fills on and the count-in off', () => {
+  it('opens at 100 bpm on the click, with fills on, the count-in off and nothing muted', () => {
     expect(readSetup(fakeStorage())).toEqual({
       bpm: 100,
       source: 'click',
       fills: true,
       countIn: false,
+      mutes: {},
     })
     expect(DEFAULT_BPM).toBe(100)
     expect(DEFAULT_FILLS).toBe(true)
     expect(DEFAULT_COUNT_IN).toBe(false)
+    expect(DEFAULT_MUTES).toEqual({})
     expect(DEFAULT_SETUP).toEqual({
       bpm: DEFAULT_BPM,
       source: DEFAULT_SOURCE,
       fills: DEFAULT_FILLS,
       countIn: DEFAULT_COUNT_IN,
+      mutes: DEFAULT_MUTES,
     })
   })
 
@@ -72,7 +77,13 @@ describe('a round trip', () => {
   it('gives back what went in', () => {
     const storage = fakeStorage()
     writeSetup(
-      { bpm: 137, source: 'straight-funk', fills: false, countIn: true },
+      {
+        bpm: 137,
+        source: 'straight-funk',
+        fills: false,
+        countIn: true,
+        mutes: DEFAULT_MUTES,
+      },
       storage,
     )
 
@@ -81,13 +92,20 @@ describe('a round trip', () => {
       source: 'straight-funk',
       fills: false,
       countIn: true,
+      mutes: {},
     })
   })
 
   it('stores the version alongside, so a later shape can tell itself apart', () => {
     const storage = fakeStorage()
     writeSetup(
-      { bpm: 120, source: 'click', fills: true, countIn: false },
+      {
+        bpm: 120,
+        source: 'click',
+        fills: true,
+        countIn: false,
+        mutes: DEFAULT_MUTES,
+      },
       storage,
     )
 
@@ -97,13 +115,23 @@ describe('a round trip', () => {
       source: 'click',
       fills: true,
       countIn: false,
+      mutes: {},
     })
   })
 
   it('keeps both edges of the legal range', () => {
     for (const bpm of [MIN_BPM, MAX_BPM]) {
       const storage = fakeStorage()
-      writeSetup({ bpm, source: 'click', fills: true, countIn: false }, storage)
+      writeSetup(
+        {
+          bpm,
+          source: 'click',
+          fills: true,
+          countIn: false,
+          mutes: DEFAULT_MUTES,
+        },
+        storage,
+      )
 
       expect(readSetup(storage).bpm, `${bpm}`).toBe(bpm)
     }
@@ -121,6 +149,7 @@ describe('each value falls back on its own', () => {
       source: 'straight-funk',
       fills: DEFAULT_FILLS,
       countIn: DEFAULT_COUNT_IN,
+      mutes: DEFAULT_MUTES,
     })
   })
 
@@ -134,6 +163,7 @@ describe('each value falls back on its own', () => {
       source: DEFAULT_SOURCE,
       fills: DEFAULT_FILLS,
       countIn: DEFAULT_COUNT_IN,
+      mutes: DEFAULT_MUTES,
     })
   })
 
@@ -152,7 +182,7 @@ describe('each value falls back on its own', () => {
 })
 
 describe('the stored shape', () => {
-  it('stays at version 1, because V8 and V9 added fields instead of changing the shape', () => {
+  it('stays at version 1, because V8, V9 and V15 added fields instead of changing the shape', () => {
     expect(SETUP_VERSION).toBe(1)
   })
 
@@ -164,6 +194,7 @@ describe('the stored shape', () => {
       source: 'straight-funk',
       fills: true,
       countIn: false,
+      mutes: {},
     })
   })
 
@@ -180,6 +211,7 @@ describe('the stored shape', () => {
       source: 'straight-funk',
       fills: false,
       countIn: false,
+      mutes: {},
     })
   })
 })
@@ -188,7 +220,13 @@ describe('the fills toggle', () => {
   it('keeps a box that was unticked', () => {
     const storage = fakeStorage()
     writeSetup(
-      { bpm: 120, source: 'straight-funk', fills: false, countIn: false },
+      {
+        bpm: 120,
+        source: 'straight-funk',
+        fills: false,
+        countIn: false,
+        mutes: DEFAULT_MUTES,
+      },
       storage,
     )
 
@@ -205,6 +243,7 @@ describe('the fills toggle', () => {
       source: 'straight-funk',
       fills: DEFAULT_FILLS,
       countIn: DEFAULT_COUNT_IN,
+      mutes: DEFAULT_MUTES,
     })
   })
 
@@ -224,6 +263,7 @@ describe('the fills toggle', () => {
         source: 'straight-funk',
         fills: DEFAULT_FILLS,
         countIn: DEFAULT_COUNT_IN,
+        mutes: DEFAULT_MUTES,
       })
     }
   })
@@ -243,6 +283,7 @@ describe('the fills toggle', () => {
       source: 'straight-funk',
       fills: false,
       countIn: DEFAULT_COUNT_IN,
+      mutes: DEFAULT_MUTES,
     })
   })
 })
@@ -255,7 +296,13 @@ describe('the count-in box', () => {
   it('keeps a box that was ticked', () => {
     const storage = fakeStorage()
     writeSetup(
-      { bpm: 120, source: 'straight-funk', fills: true, countIn: true },
+      {
+        bpm: 120,
+        source: 'straight-funk',
+        fills: true,
+        countIn: true,
+        mutes: DEFAULT_MUTES,
+      },
       storage,
     )
 
@@ -277,6 +324,7 @@ describe('the count-in box', () => {
       source: 'straight-funk',
       fills: false,
       countIn: false,
+      mutes: DEFAULT_MUTES,
     })
   })
 
@@ -297,6 +345,7 @@ describe('the count-in box', () => {
         source: 'straight-funk',
         fills: false,
         countIn: DEFAULT_COUNT_IN,
+        mutes: DEFAULT_MUTES,
       })
     }
   })
@@ -317,7 +366,134 @@ describe('the count-in box', () => {
       source: DEFAULT_SOURCE,
       fills: false,
       countIn: true,
+      mutes: DEFAULT_MUTES,
     })
+  })
+})
+
+describe('the mute sets', () => {
+  it('are empty for a player who has never muted anything', () => {
+    expect(readSetup(fakeStorage()).mutes).toEqual({})
+    expect(DEFAULT_MUTES).toEqual({})
+  })
+
+  it('reads a record written before the field existed with nothing muted and the stored tempo intact', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 137,
+        source: 'straight-funk',
+        fills: false,
+        countIn: true,
+      }),
+    )
+
+    expect(setup).toEqual({
+      bpm: 137,
+      source: 'straight-funk',
+      fills: false,
+      countIn: true,
+      mutes: {},
+    })
+    expect(setup.bpm).toBe(137)
+  })
+
+  it('round-trips a set for each of two grooves', () => {
+    const storage = fakeStorage()
+    const mutes: StoredMutes = {
+      rock: ['hat'],
+      'straight-funk': ['kick', 'snare'],
+    }
+    writeSetup(
+      { bpm: 92, source: 'rock', fills: true, countIn: false, mutes },
+      storage,
+    )
+
+    expect(readSetup(storage).mutes).toEqual(mutes)
+  })
+
+  it('keeps a set under the groove it was stored for', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 92,
+        source: 'rock',
+        fills: true,
+        countIn: false,
+        mutes: { rock: ['hat'] },
+      }),
+    )
+
+    expect(setup.mutes.rock).toEqual(['hat'])
+    expect(setup.mutes['straight-funk']).toBeUndefined()
+  })
+
+  it('drops a set stored under a groove that no longer exists', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 92,
+        source: 'rock',
+        fills: true,
+        countIn: false,
+        mutes: { rock: ['hat'], 'a-groove-we-removed': ['kick'] },
+      }),
+    )
+
+    expect(setup.mutes).toEqual({ rock: ['hat'] })
+  })
+
+  it('drops a voice the row cannot show and keeps the rest of the set', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 92,
+        source: 'rock',
+        fills: true,
+        countIn: false,
+        mutes: { rock: ['hat', 'cowbell', 7, null] },
+      }),
+    )
+
+    expect(setup.mutes).toEqual({ rock: ['hat'] })
+  })
+
+  it('drops an entry whose set is not an array and keeps the entries beside it', () => {
+    const setup = readSetup(
+      stored({
+        version: SETUP_VERSION,
+        bpm: 92,
+        source: 'rock',
+        fills: true,
+        countIn: false,
+        mutes: { rock: ['hat'], 'straight-funk': 'kick' },
+      }),
+    )
+
+    expect(setup.mutes).toEqual({ rock: ['hat'] })
+  })
+
+  it('resets a mutes that is not an object and keeps the other four', () => {
+    for (const mutes of ['rock', 7, null, [], ['rock'], true]) {
+      const setup = readSetup(
+        stored({
+          version: SETUP_VERSION,
+          bpm: 137,
+          source: 'straight-funk',
+          fills: false,
+          countIn: true,
+          mutes,
+        }),
+      )
+
+      expect(setup, JSON.stringify(mutes)).toEqual({
+        bpm: 137,
+        source: 'straight-funk',
+        fills: false,
+        countIn: true,
+        mutes: {},
+      })
+    }
   })
 })
 
@@ -373,7 +549,13 @@ describe('storage that will not cooperate', () => {
 
     expect(() =>
       writeSetup(
-        { bpm: 120, source: 'click', fills: true, countIn: false },
+        {
+          bpm: 120,
+          source: 'click',
+          fills: true,
+          countIn: false,
+          mutes: DEFAULT_MUTES,
+        },
         storage,
       ),
     ).not.toThrow()
@@ -390,7 +572,13 @@ describe('storage that will not cooperate', () => {
     expect(() => readSetup()).not.toThrow()
     expect(readSetup()).toEqual(DEFAULT_SETUP)
     expect(() =>
-      writeSetup({ bpm: 120, source: 'click', fills: true, countIn: false }),
+      writeSetup({
+        bpm: 120,
+        source: 'click',
+        fills: true,
+        countIn: false,
+        mutes: DEFAULT_MUTES,
+      }),
     ).not.toThrow()
 
     vi.unstubAllGlobals()

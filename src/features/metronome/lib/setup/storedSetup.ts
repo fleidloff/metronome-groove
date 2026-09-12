@@ -1,3 +1,4 @@
+import { MUTABLE_VOICES, type MuteSet } from '../mute/voices'
 import { isTempo } from '../transport/tempo'
 import { SOURCE_IDS, type SourceId } from '../transport/source'
 
@@ -13,11 +14,16 @@ export const DEFAULT_FILLS = true
 
 export const DEFAULT_COUNT_IN = false
 
+export type StoredMutes = Readonly<Partial<Record<SourceId, MuteSet>>>
+
+export const DEFAULT_MUTES: StoredMutes = {}
+
 export interface Setup {
   readonly bpm: number
   readonly source: SourceId
   readonly fills: boolean
   readonly countIn: boolean
+  readonly mutes: StoredMutes
 }
 
 export const DEFAULT_SETUP: Setup = {
@@ -25,6 +31,7 @@ export const DEFAULT_SETUP: Setup = {
   source: DEFAULT_SOURCE,
   fills: DEFAULT_FILLS,
   countIn: DEFAULT_COUNT_IN,
+  mutes: DEFAULT_MUTES,
 }
 
 const storageOf = (given?: Storage) => {
@@ -42,6 +49,23 @@ const isSourceId = (value: unknown): value is SourceId =>
 
 const isStoredTempo = (value: unknown): value is number =>
   typeof value === 'number' && isTempo(value)
+
+const isMutableVoice = (value: unknown): value is MuteSet[number] =>
+  typeof value === 'string' &&
+  (MUTABLE_VOICES as readonly string[]).includes(value)
+
+const readMutes = (value: unknown): StoredMutes => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return DEFAULT_MUTES
+  }
+
+  const mutes: Record<string, MuteSet> = {}
+  for (const [source, set] of Object.entries(value)) {
+    if (!isSourceId(source) || !Array.isArray(set)) continue
+    mutes[source] = set.filter(isMutableVoice)
+  }
+  return mutes
+}
 
 export function readSetup(storage?: Storage): Setup {
   const live = storageOf(storage)
@@ -73,6 +97,7 @@ export function readSetup(storage?: Storage): Setup {
     fills: typeof stored.fills === 'boolean' ? stored.fills : DEFAULT_FILLS,
     countIn:
       typeof stored.countIn === 'boolean' ? stored.countIn : DEFAULT_COUNT_IN,
+    mutes: readMutes(stored.mutes),
   }
 }
 

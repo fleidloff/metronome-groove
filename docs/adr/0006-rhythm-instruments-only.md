@@ -22,6 +22,20 @@ It also cannot be escaped. Muting in this app is per beat and not per voice —
 one"* — so a melodic voice in a groove is compulsory for everyone who selects
 that groove.
 
+> **Amended 2026-09-12 · V15 · the escapability argument is spent, the decision
+> is not.** V15 shipped per-voice mute, so the paragraph above is no longer true
+> of the app: a voice can be switched off. What it was doing here was
+> *supporting* — the sentence begins "It **also** cannot be escaped." The load
+> is carried by the paragraph before it, and that is untouched: **a bass line
+> has a key, and a groove that states one chooses the player's material for
+> them.** A mute does not fix that. A player who has to mute the bass before
+> every session is still being handed a groove written in a key they did not
+> pick, and one who forgets is transposing before they have played a note.
+>
+> V15 also does not reopen what the persona ruled out. It is one row of voice
+> toggles and never a grid of voices against steps — Sam: *"If this lands as
+> voices-by-steps, it's the producer's feature and I close the tab."*
+
 ## Decision
 
 **This app plays rhythm instruments only. No groove will ever carry a melodic

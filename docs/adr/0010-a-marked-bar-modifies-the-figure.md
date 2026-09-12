@@ -54,6 +54,19 @@ scoped to the contours a variation designs and deliberately excludes V6's kick
 line, where 0.82 → 0.86 is half a ladder step and is frozen by the toggle-off
 guarantee.
 
+**These invariants bind the written figure, not the audible result.** V15 added
+per-voice mute and forced the distinction rather than choosing it: invariant 1
+dies the moment a player mutes the kick, invariant 2 dies on a hat mute in every
+groove, and invariant 6 dies on a snare mute in rock. The code already read this
+way — `sixInvariantViolations` takes a `GrooveDefinition` and knows nothing of
+mutes — so nothing changed; what changed is that the record now says why.
+
+The reason is the record's own subject. **This ADR exists to stop *the app*
+pulling the floor out from under a player silently.** A mute is the opposite of
+that on both counts: the player did it, to a control they pressed, and one press
+puts it back. Muting is loud, self-inflicted and reversible; a bar-replacing
+fill arriving unannounced is none of the three.
+
 **How far a bar may depart is a rule, not a feeling: steps 0–7 stay ordinary and
 the gesture lives in steps 8–15.** The first half of a 4/4 bar establishes and
 the second half is where a one-bar fill lives — which is why drummers start

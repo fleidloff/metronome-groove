@@ -32,7 +32,84 @@ Started 2026-09-12 · `/vibe-with-docs`
 * Mutes persist **per groove** in the stored setup and come back on reload. A
   record written before V15 reads back complete rather than costing the tempo.
 
+*Needs an ear, added at build time:* bossa's clave alone renders at velocity
+0.5, and Sam flagged that it may simply not carry against an amped guitar —
+*"'can't hear it' and 'app stopped' are the same event to me."* If bare clave is
+inaudible the fix is the sample's level, never a fader: *"volume is mixing and
+mixing is setup before sound."*
+
+## Amended at build time — 2026-09-12
+
+Both files were written while V11 was mid-flight. Two things they rest on are no
+longer true of the tree. Neither changes what V15 builds; both change what it
+may claim.
+
+* **Bossa's clave is on `claves`, not on `rim`.** V11's listening pass moved it:
+  `rim` was measured to be MuldjordKit's snare rather than a cross-stick, so the
+  clave went to `claves` at its own nominal. `bossaNova.ts` now declares
+  `voices: ['kick', 'snare', 'hatClosed']` and `exactVoices: ['claves']`, and
+  **no groove in the app plays `rim` at all.**
+
+  **This voids the risk Fred accepted when he overruled the musician.** That
+  risk was *"Sam reaches for the backbeat-removal exercise he knows from rock,
+  presses the same-looking button in bossa, and deletes the clave instead."* It
+  cannot happen: `claves` appears in no `KIT_VOICES_OF` entry, so the Snare
+  toggle cannot reach the clave. The decision to fold `rim` into the Snare
+  toggle stands and costs nothing today, because nothing plays `rim` — it is
+  kept rather than dropped so that a future groove reaching for `rim` inherits
+  the mapping rather than a missing one.
+
+  The musician's objection is therefore untested rather than disproved. If a
+  later groove does put a cross-stick on `rim`, the argument it made — that rim
+  and snare are written as separate lines, unlike the two hats — becomes live
+  again and should be re-read before that groove ships.
+
+* **Bossa's snare sounds in the fill only.** Its ordinary and light bars state
+  no snare; the fill states two notes, on steps 13 and 15. So bossa's Snare
+  toggle is audible one bar in eight. `## Decided` already settled the
+  behaviour — *"mute the snare and bossa's fill loses its two notes, nothing
+  else moves"* — but it is worth naming against Sam's red line, *"a toggle I can
+  press that changes no sound is the app lying to me."* The toggle does change
+  sound; it changes it rarely. Left as specced, and flagged for the listening
+  pass.
+
+* **The tech spec's first risk is spent.** It says *"the tree does not typecheck
+  today"* because V11 was unfinished. V11, V12, V13 and V16 have all landed and
+  the tree is green.
+
 ## Decided
+
+* **Bossa may be muted all the way down to its bare clave.** Decided at build
+  time, by `sam`, on a question the contract left ambiguous: bossa's clave is on
+  `claves`, which no toggle can reach, so muting all three of kick, snare and
+  hat does not leave silence — it leaves the clave playing alone. The rule as
+  written (*"the last audible voice cannot be muted"*) does not say which way
+  that falls.
+
+  **It falls open.** `canMute` is false only when muting would leave **nothing**
+  audible, counting `claves`. So rock, funk, shuffle and second line still
+  disable their third toggle, and bossa disables none.
+
+  Sam's reasoning, which is stronger than the consistency argument it beats:
+
+  > *"`docs/music.md` says the pattern **is** the groove — everything else in a
+  > bossa is written around it. If the app can hand me the thing everything else
+  > is written around and nothing else, that is the most useful state it has."*
+
+  > *"Refusing it costs me the thing I care about most. I'm not looking at the
+  > screen, so a disabled control is a control that lies to my ear… You'd be
+  > spending my one red line to prevent a state that is musically fine."*
+
+  And the case that settles it against consistency — because in bossa the snare
+  sounds in the fill only, disabling the third toggle when Snare is the survivor
+  gives **bare clave seven bars in eight and then two snare notes**: the same
+  state arrived at sideways, plus a hiccup.
+
+  He also named the failure mode and why it is acceptable: *"First honest
+  reaction: that's the click."* Same sample, quiet and high. But it is reached by
+  three deliberate presses, each one audibly removing a voice, and undone by one
+  — *"loud, self-inflicted, and reversible"*, which is the opposite of the silent
+  failure ADR 0010 exists to prevent.
 
 * **Per-voice mute at all, against `specs/features.md`'s "Not building" row** —
   yes. The persona asked for it in as many words: *"Fewer beats, fewer

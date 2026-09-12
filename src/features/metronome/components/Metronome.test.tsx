@@ -5,6 +5,10 @@ import {
   DEFAULT_BPM as SETUP_DEFAULT_BPM,
   SETUP_KEY,
 } from '../lib/setup/storedSetup'
+import {
+  MUTABLE_VOICES,
+  type MutableVoice,
+} from '../lib/mute/voices'
 import { MAX_BPM, MIN_BPM } from '../lib/transport/tempo'
 import {
   BEATS_OF_SILENCE,
@@ -18,6 +22,12 @@ import { Metronome, type Transport } from './Metronome'
 
 const DEFAULT_BPM = SETUP_DEFAULT_BPM
 
+const NAME_OF: Record<MutableVoice, string> = {
+  kick: metronome.kick,
+  snare: metronome.snare,
+  hat: metronome.hat,
+}
+
 function fakeTransport() {
   const listeners = new Set<(beat: number) => void>()
   const start = vi.fn()
@@ -28,6 +38,7 @@ function fakeTransport() {
   const select = vi.fn()
   const setFills = vi.fn()
   const setCountIn = vi.fn()
+  const setMutes = vi.fn()
   const unsubscribe = vi.fn()
   const loadingListeners = new Set<(loading: boolean) => void>()
 
@@ -40,6 +51,7 @@ function fakeTransport() {
     select,
     setFills,
     setCountIn,
+    setMutes,
     onBeat(listener) {
       listeners.add(listener)
       return () => {
@@ -76,6 +88,7 @@ function fakeTransport() {
     select,
     setFills,
     setCountIn,
+    setMutes,
     unsubscribe,
     beat,
     loading,
@@ -1353,6 +1366,281 @@ describe(app.name, () => {
       pick(GROOVE)
 
       expect(box()).toBeChecked()
+    })
+  })
+
+  describe('the mute row', () => {
+    const GROOVE = 'straight-funk'
+    const ROCK = 'rock'
+    const BOSSA = 'bossa-nova'
+    const SHUFFLE = 'shuffle'
+    const SECOND_LINE = 'second-line'
+
+    const picker = () => screen.getByRole('combobox', { name: metronome.sound })
+    const pick = (value: string) =>
+      fireEvent.change(picker(), { target: { value } })
+    const box = (voice: MutableVoice) =>
+      screen.queryByRole('checkbox', { name: NAME_OF[voice] })
+    const enableAll = () =>
+      screen.queryByRole('button', { name: metronome.enableAll })
+
+    it('is absent from the page while the click is selected', () => {
+      render(<Metronome />)
+
+      expect(screen.queryByRole('group', { name: metronome.voices })).toBeNull()
+      for (const voice of MUTABLE_VOICES) expect(box(voice)).toBeNull()
+    })
+
+    it('arrives with every groove, all three voices sounding', () => {
+      render(<Metronome />)
+
+      for (const groove of [GROOVE, ROCK, BOSSA, SHUFFLE, SECOND_LINE]) {
+        pick(groove)
+        for (const voice of MUTABLE_VOICES) expect(box(voice)).toBeChecked()
+      }
+    })
+
+    it('goes again when the click comes back', () => {
+      render(<Metronome />)
+
+      pick(GROOVE)
+      pick('click')
+
+      expect(box('hat')).toBeNull()
+    })
+
+    it('puts the hat in the same position in every groove', () => {
+      render(<Metronome />)
+
+      for (const groove of [ROCK, BOSSA, SHUFFLE, SECOND_LINE, GROOVE]) {
+        pick(groove)
+
+        const voices = screen
+          .getByRole('group', { name: metronome.voices })
+          .querySelectorAll('input[type="checkbox"]')
+
+        expect(voices).toHaveLength(MUTABLE_VOICES.length)
+        MUTABLE_VOICES.forEach((voice, index) => {
+          expect(voices[index]).toHaveAccessibleName(NAME_OF[voice])
+        })
+      }
+    })
+
+    it('disables the last voice that sounds in rock, and none of bossa’s', () => {
+      render(<Metronome />)
+
+      pick(ROCK)
+      fireEvent.click(box('kick')!)
+      fireEvent.click(box('snare')!)
+      expect(box('hat')).toBeDisabled()
+
+      pick(BOSSA)
+      fireEvent.click(box('kick')!)
+      fireEvent.click(box('snare')!)
+      expect(box('hat')).toBeEnabled()
+    })
+
+    it('tells the transport which voices went quiet, without stopping the run', () => {
+      const { transport, setMutes, start, stop } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(screen.getByRole('button', { name: metronome.start }))
+      fireEvent.click(box('hat')!)
+
+      expect(setMutes).toHaveBeenLastCalledWith(['hat'])
+      expect(box('hat')).not.toBeChecked()
+      expect(stop).not.toHaveBeenCalled()
+      expect(start).toHaveBeenCalledTimes(1)
+    })
+
+    it('tells it again when the voice comes back', () => {
+      const { transport, setMutes } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box('hat')!)
+      fireEvent.click(box('hat')!)
+
+      expect(setMutes).toHaveBeenLastCalledWith([])
+    })
+
+    it('tells it the new groove’s own set the moment the groove changes', () => {
+      const { transport, setMutes } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(ROCK)
+      fireEvent.click(box('hat')!)
+      expect(setMutes).toHaveBeenLastCalledWith(['hat'])
+
+      pick(BOSSA)
+      expect(setMutes).toHaveBeenLastCalledWith([])
+
+      pick(ROCK)
+      expect(setMutes).toHaveBeenLastCalledWith(['hat'])
+    })
+
+    it('keeps each groove’s mutes to itself, so bossa comes up whole', () => {
+      render(<Metronome />)
+
+      pick(ROCK)
+      fireEvent.click(box('hat')!)
+      expect(box('hat')).not.toBeChecked()
+
+      pick(BOSSA)
+      expect(box('hat')).toBeChecked()
+
+      pick(ROCK)
+      expect(box('hat')).not.toBeChecked()
+    })
+
+    it('offers enable all only once something is muted', () => {
+      render(<Metronome />)
+
+      pick(GROOVE)
+      expect(enableAll()).toBeNull()
+
+      fireEvent.click(box('hat')!)
+      expect(enableAll()).toBeVisible()
+
+      fireEvent.click(box('hat')!)
+      expect(enableAll()).toBeNull()
+    })
+
+    it('clears the selected groove only, so the other groove keeps its set', () => {
+      const { transport, setMutes } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(ROCK)
+      fireEvent.click(box('hat')!)
+
+      pick(BOSSA)
+      fireEvent.click(box('snare')!)
+      fireEvent.click(enableAll()!)
+
+      expect(enableAll()).toBeNull()
+      for (const voice of MUTABLE_VOICES) expect(box(voice)).toBeChecked()
+      expect(setMutes).toHaveBeenLastCalledWith([])
+
+      pick(ROCK)
+      expect(box('hat')).not.toBeChecked()
+      expect(setMutes).toHaveBeenLastCalledWith(['hat'])
+    })
+
+    it('is a gesture like any other, so it arms the speaker button', () => {
+      const { transport } = fakeTransport()
+      const handlers = new Map<string, () => void>()
+      vi.stubGlobal('navigator', {
+        ...globalThis.navigator,
+        mediaSession: {
+          setActionHandler: (action: string, handler: (() => void) | null) => {
+            if (handler === null) handlers.delete(action)
+            else handlers.set(action, handler)
+          },
+          metadata: null,
+          playbackState: 'none',
+        },
+      })
+      render(<Metronome transport={transport} />)
+
+      pick(GROOVE)
+      fireEvent.click(box('hat')!)
+
+      expect(handlers.size).toBe(1)
+      vi.unstubAllGlobals()
+    })
+
+    it('round-trips the set through the one setup record, per groove', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      pick(ROCK)
+      fireEvent.click(box('hat')!)
+      pick(BOSSA)
+      fireEvent.click(box('kick')!)
+
+      expect(
+        JSON.parse(window.localStorage.getItem(SETUP_KEY) ?? '{}'),
+      ).toMatchObject({ mutes: { rock: ['hat'], 'bossa-nova': ['kick'] } })
+      expect(window.localStorage.length).toBe(1)
+
+      cleanup()
+      render(<Metronome transport={transport} />)
+
+      expect(box('kick')).not.toBeChecked()
+      expect(box('snare')).toBeChecked()
+
+      pick(ROCK)
+      expect(box('hat')).not.toBeChecked()
+    })
+
+    it('comes back muted the way it was stored', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({
+          version: 1,
+          bpm: 120,
+          source: ROCK,
+          mutes: { rock: ['hat'] },
+        }),
+      )
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(box('hat')).not.toBeChecked()
+      expect(box('kick')).toBeChecked()
+      expect(enableAll()).toBeVisible()
+    })
+
+    it('tells the transport about a restored set, not just the checkboxes', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({
+          version: 1,
+          bpm: 120,
+          source: ROCK,
+          mutes: { rock: ['hat'] },
+        }),
+      )
+      const { transport, setMutes } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(setMutes).toHaveBeenLastCalledWith(['hat'])
+    })
+
+    it('opens with everything sounding from a record written before the field existed', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 137, source: ROCK, fills: false }),
+      )
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      for (const voice of MUTABLE_VOICES) expect(box(voice)).toBeChecked()
+      expect(screen.getByRole('status')).toHaveTextContent(
+        `137 ${metronome.tempoUnit}`,
+      )
+    })
+
+    it('sits below Play with the other two boxes, and the credit is still last', () => {
+      render(<Metronome />)
+      pick(GROOVE)
+
+      const play = screen.getByRole('button', { name: metronome.start })
+      const countIn = screen.getByRole('checkbox', { name: metronome.countIn })
+      const row = screen.getByRole('group', { name: metronome.voices })
+      const credit = screen.getByText(app.sampleCredit)
+
+      expect(
+        play.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        countIn.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        row.compareDocumentPosition(credit) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(credit.nextElementSibling).toBeNull()
     })
   })
 

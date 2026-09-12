@@ -91,6 +91,8 @@ The arrows, each with an import behind it:
 | `lib/countIn/` → `lib/click/` | **a sideways arrow between concern folders.** `countIn/source.ts` imports `CLICK_PATTERN` — the count bar is the click's own accent pattern, and a second copy of those velocities is the thing that drifts |
 | `lib/countIn/` → `lib/transport/` | `countIn/source.ts` implements the `Source` it also wraps |
 | `lib/groove/` → `lib/transport/` | `groove/source.ts` implements the `Source` the transport walks |
+| `lib/groove/`, `lib/setup/`, `hooks/`, `components/` → `lib/mute/` | four readers, one direction. `groove/source.ts` filters each rendered step, `storedSetup.ts` validates a stored set, `useClickTransport.ts` carries the getter to the device, and `MuteRow.tsx` renders the row. `lib/mute/` imports none of them |
+| `components/` → `lib/groove/` | `Metronome.tsx` reads `grooves/registry.ts` for the selected `GrooveDefinition`, which the mute row needs to know which toggles to show. V15 moved `GROOVES` out of `useClickTransport.ts` for this: a component may not reach into a hook for data |
 | `lib/click/` → `lib/transport/` | `click/source.ts` does the same for the click |
 | `hooks/` → `components/` | **type-only**: the hook imports `Transport` from `Metronome.tsx`, pointing at its own consumer. No zone forbids it and it erases at build, but the contract would sit better in `lib/transport/` |
 | `lib/transport/`, `lib/groove/` → `@/lib/velocity` | gain per hit |
@@ -100,8 +102,20 @@ The arrows, each with an import behind it:
 Zone 6 enforces the one that matters: nothing in `lib/` reaches back up into
 UI, a hook or the store.
 
-The slice now holds seven concern folders — `click/`, `countIn/`, `groove/`,
-`remote/`, `setup/`, `tap/` and `transport/`.
+The slice now holds eight concern folders — `click/`, `countIn/`, `groove/`,
+`mute/`, `remote/`, `setup/`, `tap/` and `transport/`.
+
+**`lib/mute/` is the most-read of them, and that is why it is a folder rather
+than a function somewhere.** It holds one mapping — which kit voices each of the
+three row toggles covers — plus the last-audible rule and the filter itself.
+`groove/` filters its rendered steps through it, `setup/` stores its sets,
+`hooks/` carries the getter into the audio device and the slice's `components/`
+render its row — so **four** places read it and it reads none of them. It
+imports types only.
+
+The mapping is also where a guarantee lives that would otherwise be a branch:
+`claves` appears in no entry, so the click and the count-in are outside muting
+**by construction**. Nothing checks for them; there is nothing to check.
 
 **`lib/groove/` is the first to have grown an inner split**, and it is the one
 worth knowing about: `cycle.ts`, `source.ts`, `invariants.ts`, `humanize.ts`,

@@ -25,3 +25,4 @@ record is edited to ⛔ **Superseded by**. Nothing here is deleted.
 | [0012](0012-a-groove-is-data.md) | A groove is data, and `lib/groove/` is machinery over it | ✅ Accepted | 2026-09-12 |
 | [0013](0013-a-device-is-keyed-by-its-bank.md) | A device is keyed by its sample bank, not by its source | ✅ Accepted | 2026-09-12 |
 | [0014](0014-swing-warps-the-grid.md) | Swing warps the grid, it does not displace single steps | ✅ Accepted | 2026-09-12 |
+| [0015](0015-thinning-is-a-filter-not-a-selector.md) | Thinning is a filter over the rendered stream, never a selector | ✅ Accepted | 2026-09-12 |

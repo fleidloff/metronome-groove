@@ -18,5 +18,10 @@ export const metronome = {
   secondLine: 'Second line',
   fills: 'Fills',
   countIn: 'Count-in',
+  voices: 'Voices',
+  kick: 'Kick',
+  snare: 'Snare',
+  hat: 'Hat',
+  enableAll: 'Enable all',
   loading: 'Loading…',
 } satisfies MetronomeSnippets

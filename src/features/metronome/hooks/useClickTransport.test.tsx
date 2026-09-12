@@ -5,7 +5,17 @@ import type { Transport } from '../components/Metronome'
 import { CLAVES_SAMPLE_URL } from '../lib/click/claves'
 import { CLICK_SOURCE } from '../lib/click/source'
 import { KIT, KIT_SAMPLE_URLS, type KitVoiceName } from '../lib/groove/kit'
-import { readSetup, writeSetup, type Setup } from '../lib/setup/storedSetup'
+import {
+  MUTABLE_VOICES,
+  NO_MUTES,
+  type MuteSet,
+} from '../lib/mute/voices'
+import {
+  DEFAULT_MUTES,
+  readSetup,
+  writeSetup,
+  type Setup,
+} from '../lib/setup/storedSetup'
 import type { SourceId } from '../lib/transport/source'
 import {
   buildRealAudio,
@@ -362,9 +372,9 @@ describe('the transport carrying the fills setting', () => {
    *  the way the scheduler does — once per queued step. */
   function watched(device: ReturnType<typeof fakeAudio>) {
     const given: (() => boolean)[] = []
-    const factory: AudioFactory = (bpm, source, variations, countIn) => {
+    const factory: AudioFactory = (bpm, source, variations, countIn, mutes) => {
       given.push(variations)
-      return device.factory(bpm, source, variations, countIn)
+      return device.factory(bpm, source, variations, countIn, mutes)
     }
     return { factory, given }
   }
@@ -416,6 +426,83 @@ describe('the transport carrying the fills setting', () => {
     await device.finishLoading()
 
     expect(given[0]()).toBe(false)
+  })
+})
+
+describe('the transport carrying the mute set', () => {
+  const GROOVE: SourceId = 'straight-funk'
+
+  /** Keeps whatever getter the hook hands the source, so a test can read it
+   *  the way the scheduler does — once per queued step. */
+  function watched(device: ReturnType<typeof fakeAudio>) {
+    const given: (() => MuteSet)[] = []
+    const factory: AudioFactory = (bpm, source, variations, countIn, mutes) => {
+      given.push(mutes)
+      return device.factory(bpm, source, variations, countIn, mutes)
+    }
+    return { factory, muted: () => given[given.length - 1]() }
+  }
+
+  it('hands the source a getter rather than a captured set', async () => {
+    const device = fakeAudio()
+    const { factory, muted } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+
+    expect(muted()).toEqual(NO_MUTES)
+
+    act(() => transport().setMutes?.(['hat']))
+    expect(muted()).toEqual(['hat'])
+
+    act(() => transport().setMutes?.(NO_MUTES))
+    expect(muted()).toEqual(NO_MUTES)
+  })
+
+  it('builds no second device and stops no run to change it', async () => {
+    const device = fakeAudio()
+    const { factory } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await device.finishLoading()
+
+    act(() => transport().setMutes?.(['hat']))
+
+    expect(device.built.count).toBe(1)
+    expect(device.stop).not.toHaveBeenCalled()
+    expect(device.start).toHaveBeenCalledTimes(1)
+  })
+
+  it('answers with the live set inside a run, unlike the count-in latch', async () => {
+    const device = fakeAudio()
+    const { factory, muted } = watched(device)
+    const { transport } = mount(factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+    act(() => transport().start(120))
+    await settle()
+
+    act(() => transport().setMutes?.(['kick']))
+
+    expect(muted()).toEqual(['kick'])
+  })
+
+  it('carries the set into a device built later', async () => {
+    const device = fakeAudio()
+    const { factory, muted } = watched(device)
+    const { transport } = mount(factory)
+
+    // Set before anything is built, which is what a restored setup does.
+    act(() => transport().setMutes?.(['snare']))
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+
+    expect(muted()).toEqual(['snare'])
   })
 })
 
@@ -602,6 +689,7 @@ describe('the transport choosing what it plays', () => {
       source: BOSSA_ID,
       fills: true,
       countIn: false,
+      mutes: DEFAULT_MUTES,
     }
     writeSetup(setup, storage)
 
@@ -675,9 +763,9 @@ describe('the transport arming the count-in', () => {
    */
   function watched(device: ReturnType<typeof fakeAudio>) {
     const given: (() => boolean)[] = []
-    const factory: AudioFactory = (bpm, source, variations, countIn) => {
+    const factory: AudioFactory = (bpm, source, variations, countIn, mutes) => {
       given.push(countIn)
-      return device.factory(bpm, source, variations, countIn)
+      return device.factory(bpm, source, variations, countIn, mutes)
     }
     return { factory, armed: () => given[given.length - 1]() }
   }
@@ -898,6 +986,24 @@ describe('what the transport builds for real', () => {
     // Then the kit, and no claves again.
     expect(groove.length).toBeGreaterThan(0)
     expect(groove.every((hit) => KIT_SAMPLE_URLS.includes(hit.url))).toBe(true)
+  })
+
+  it('counts in on the claves with every voice muted, which no toggle reaches', async () => {
+    const device = fakeDevice()
+    const audio = await buildRealAudio(
+      120,
+      'straight-funk',
+      () => true,
+      () => true,
+      () => MUTABLE_VOICES,
+    )
+
+    // One count bar and one bar of the groove, at 120 bpm.
+    run(audio, device, 4)
+
+    expect(device.started.map((hit) => hit.url)).toEqual(
+      Array(4).fill(CLAVES_SAMPLE_URL),
+    )
   })
 
   it('draws the same takes with the count-in as without it', async () => {
