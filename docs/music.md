@@ -213,6 +213,39 @@ hatClosed  0 2 4 6 8 10 12 14
 kick       0 6 8 14
 ```
 
+**Second line** — V13 shipped. §2's table gave it swing 0.2 and a one-line
+description and this document never wrote the figure down; this is it. The
+snare states **no quarter at all**: its strong notes are the "and" of 2 and the
+"and" of 4, exactly one eighth after where a backbeat would be. That is the
+whole idiom, and it is learnable as a rule rather than as a shape — *the snare
+answers every beat half a beat late, and never lands on one.*
+```
+hatClosed  all 16 steps        (0.90 on the quarters, 0.78 on the other
+                                eighths, 0.66 on the odd steps)
+snare      6 14                (0.86 — the displaced backbeat)
+snare      10                  (0.70)
+snare      3 11                (0.45 — the taps, both swung)
+kick       0 6 12              (0.95 on 0; 0.86 on the "and" of 2 and the
+                                big four)
+```
+
+Three things compensate for the missing backbeat in every bar, marked or not:
+the hat's quarter rung is the bar-position anchor, the kick states beats 1 and
+4, and the approach to the downbeat is a fixed two-step figure — loud snare on
+14, near-silence on 15, then the downbeat. **Beats 2 and 3 are carried by the
+hat's 0.90 rung alone**, which is the exercise and the biggest listening risk.
+
+**The tap is 0.45, not funk's ghost of 0.37**, and the reason is this repo's
+decibel-linear curve rather than taste: at 0.37 a tap renders 0.73 dB *below*
+the hat's own sixteenths and sinks into the hat line. 0.45 puts it 2.47 dB over.
+
+**Its fill adds where every other groove's subtracts.** Rock's and funk's
+gesture is the hat stopping; here there is no kick and no backbeat underneath to
+hold the bar, so the hat plays all sixteen steps through the fill and the snare
+simply fills in the gaps its ordinary figure hints at. The loudest note is
+capped 3.06 dB under the downbeat kick, because in this groove step 0 is the
+last anchor standing.
+
 **Samba**
 ```
 ride       0 1 2  4 5 6  8 9 10  12 13 14
@@ -305,9 +338,9 @@ the audio wherever it goes.
 
 ## 4. What the pack can and cannot play
 
-**Built so far:** 16th funk (V6), straight 8th rock (V10), bossa nova (V11) and
-shuffle (V12). Funk, rock and shuffle share the same four voices and the same 22
-files; bossa adds the clave.
+**Built so far:** 16th funk (V6), straight 8th rock (V10), bossa nova (V11),
+shuffle (V12) and second line (V13). Funk, rock, shuffle and second line share
+the same four voices and the same 22 files; bossa adds the clave.
 
 **Can play, today:** straight rock, 16th funk, half-time, shuffle, half-time
 shuffle, jazz ride, boom-bap, second line, bossa nova. That is nine of the

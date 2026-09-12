@@ -998,6 +998,21 @@ describe('what the transport builds for real', () => {
     expect(sorted(device.fetched)).toEqual(sorted(held))
   })
 
+  it('fetches nothing further when second line follows rock', async () => {
+    const device = fakeDevice()
+    const { transport } = mount(buildRealAudio)
+
+    act(() => transport().select?.('rock'))
+    await loaded()
+    const held = [...device.fetched]
+    expect(sorted(held)).toEqual(sorted(ROCK_BANK))
+
+    act(() => transport().select?.('second-line'))
+    await loaded()
+
+    expect(sorted(device.fetched)).toEqual(sorted(held))
+  })
+
   it('fetches nothing further when rock follows shuffle', async () => {
     const device = fakeDevice()
     const { transport } = mount(buildRealAudio)
@@ -1079,6 +1094,7 @@ describe('what the transport builds for real', () => {
       'straight-funk',
       'rock',
       'shuffle',
+      'second-line',
       'click',
       'bossa-nova',
     ] as const) {

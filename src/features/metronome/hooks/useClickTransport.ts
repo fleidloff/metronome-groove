@@ -13,6 +13,7 @@ import { createCountInSource } from '../lib/countIn/source'
 import { BOSSA_NOVA } from '../lib/groove/grooves/bossaNova'
 import type { GrooveDefinition } from '../lib/groove/grooves/definition'
 import { ROCK } from '../lib/groove/grooves/rock'
+import { SECOND_LINE } from '../lib/groove/grooves/secondLine'
 import { SHUFFLE } from '../lib/groove/grooves/shuffle'
 import { STRAIGHT_FUNK } from '../lib/groove/grooves/straightFunk'
 import { createGrooveSource } from '../lib/groove/source'
@@ -144,6 +145,7 @@ const GROOVES: Record<Exclude<SourceId, 'click'>, GrooveDefinition> = {
   rock: ROCK,
   shuffle: SHUFFLE,
   'straight-funk': STRAIGHT_FUNK,
+  'second-line': SECOND_LINE,
 }
 
 /** What a source costs to load. The click declares none, and a groove declares

@@ -3,6 +3,7 @@ import { STEPS_PER_BAR, stepSeconds } from '@/lib/steps'
 import type { Hit, Source } from '../transport/source'
 import { hitsAt } from './cycle'
 import { BOSSA_NOVA } from './grooves/bossaNova'
+import type { GrooveDefinition } from './grooves/definition'
 import { ROCK } from './grooves/rock'
 import { SHUFFLE } from './grooves/shuffle'
 import {
@@ -258,5 +259,57 @@ describe('the stride the source hands the warp', () => {
         )
       }
     }
+  })
+})
+
+/**
+ * `swingOffset` is added outside `timingOffset`, so `exactVoices` cannot zero
+ * it and must never be extended to. Every shipped groove declares
+ * `exactVoices: []`, so nothing else in the app reaches this path.
+ * `specs/13-second-line/tech-spec.md` § The trap.
+ */
+describe('an exact voice under a swung groove', () => {
+  const LILT = 0.2
+
+  const EXACT_HAT: GrooveDefinition = {
+    ...STRAIGHT_FUNK,
+    swing: LILT,
+    humanize: { ...STRAIGHT_FUNK_HUMANIZE, exactVoices: ['hatClosed'] },
+  }
+
+  const HAT: Hit = { voice: 'hatClosed', velocity: 0.66 }
+  const KICK: Hit = { voice: 'kick', velocity: 0.95 }
+
+  const jitteredTwin = () =>
+    createGrooveSource({
+      ...EXACT_HAT,
+      humanize: { ...STRAIGHT_FUNK_HUMANIZE, exactVoices: [] },
+    })
+
+  it('still swings that voice, because swing is where the grid is', () => {
+    const source = createGrooveSource(EXACT_HAT)
+
+    for (let step = 0; step < STEPS_PER_BAR; step += 1) {
+      expect(source.displace!(HAT, step, SECONDS_PER_STEP)).toBe(
+        step % 2 === 1 ? LILT * (SECONDS_PER_STEP / 2) : 0,
+      )
+    }
+  })
+
+  it('zeroes that voice\'s jitter and leaves every other voice jittered', () => {
+    const source = createGrooveSource(EXACT_HAT)
+    const twin = jitteredTwin()
+
+    expect(
+      timingOffset(EXACT_HAT.humanize, EXACT_HAT.seed, HAT.voice, 3, SECONDS_PER_STEP),
+    ).toBe(0)
+    expect(source.displace!(HAT, 3, SECONDS_PER_STEP)).not.toBe(
+      twin.displace!(HAT, 3, SECONDS_PER_STEP),
+    )
+
+    expect(source.displace!(KICK, 3, SECONDS_PER_STEP)).toBe(
+      twin.displace!(KICK, 3, SECONDS_PER_STEP),
+    )
+    expect(source.displace!(KICK, 3, SECONDS_PER_STEP)).not.toBe(LILT * (SECONDS_PER_STEP / 2))
   })
 })

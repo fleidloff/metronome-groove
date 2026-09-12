@@ -19,6 +19,7 @@ export type MetronomeSnippets = {
   rock: string
   shuffle: string
   straightFunk: string
+  secondLine: string
   fills: string
   countIn: string
   loading: string

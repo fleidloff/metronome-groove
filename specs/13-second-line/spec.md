@@ -88,6 +88,53 @@ built is doing exactly what it was built for.
   the least reference of any groove. Sam's own exclusion applies: the person it
   does not serve is *"the drummer in a practice room"*.
 
+## Amended at build time — 2026-09-12, V12 landed first
+
+**This spec was written before V12 (Shuffle) shipped, and V12 changed
+`swingOffset` underneath it.** Two sentences below are now wrong about the tree.
+Neither changes what V13 builds; both change what its tests may claim.
+
+* **"This would be the first groove that actually swings" is no longer true.**
+  Shuffle got there first, at swing 2/3. V13 is the second, and the first at a
+  *lilt* rather than a triplet.
+
+* **"`swingOffset` returns 0 for any even step" is no longer true in general.**
+  [ADR 0014](../../docs/adr/0014-swing-warps-the-grid.md) replaced per-step
+  displacement with a grid **warp**: the function now takes a required `stride`
+  = `groove.steps / groove.subdivision`, and at `stride` 2 — rock and shuffle —
+  even grid steps do move. Shuffle's step 2 lands at 2/3 of a beat on purpose.
+
+  **Second line is unaffected**, because it declares `steps: 16` and
+  `subdivision: 16`, so its stride is 1 and the warp collapses to exactly the
+  old arithmetic. Sam's condition holds untouched: the quarters stay dead on and
+  the lilt lives strictly between them.
+
+  What changed is the *scope* of the guarantee the `## Done when` bullet asks to
+  be asserted. It is built as two assertions rather than one:
+
+  1. **The quarters never move, for every groove the app can select** — a
+     quarter is grid step `4k`, so `p = 4k / stride` is an even integer at
+     stride 1 and stride 2 alike and picks up no lag. This is the stronger,
+     truer form of what the bullet meant, and it is asserted over the groove
+     registry rather than over a number, so a fifth groove cannot skip it. It is
+     deliberately **not** claimed for all strides: at a hypothetical
+     `subdivision: 4` the quarters would lilt.
+  2. **At stride 1, no even step moves at all** — the original sentence, now
+     scoped to the grooves it is true of, which includes second line.
+
+* **The tightest swing margin is at 180 bpm, not 112.5.** The spec says below
+  that *"the tightest margin anywhere in the app's 40-180 is at 112.5 bpm --
+  swing 13.33 ms against worst-case jitter 8.00 ms"*. That pair is real but it
+  leaves 5.33 ms of margin. The true minimum is at the **top** of the range:
+  at 180 bpm the lilt is 8.33 ms against 5.00 ms of jitter, which is 3.33 ms --
+  exactly the frozen contract. So the 3.3 ms number is right and its derivation
+  was not. The test sweeps every integer tempo rather than the named ones, so it
+  does not rest on which tempo is tightest.
+
+  The risk the tech spec names first — *someone changes the parity test and
+  every groove's quarters start lilting* — is caught by the first of those, and
+  caught harder than by the original wording.
+
 ## What this change runs into
 
 Facts about the tree, read before any question was asked.

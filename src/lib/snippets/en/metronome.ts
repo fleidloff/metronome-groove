@@ -15,6 +15,7 @@ export const metronome = {
   rock: 'Rock',
   shuffle: 'Shuffle',
   straightFunk: 'Straight funk',
+  secondLine: 'Second line',
   fills: 'Fills',
   countIn: 'Count-in',
   loading: 'Loading…',

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { BEATS_PER_BAR, STEPS_PER_BAR, isQuarter, stepSeconds } from '@/lib/steps'
 import { ACCENT_VELOCITY, CLICK_PATTERN, EVEN_VELOCITY } from '../click/pattern'
 import { createGrooveSource } from '../groove/source'
+import { SECOND_LINE, SECOND_LINE_SWING } from '../groove/grooves/secondLine'
 import { STRAIGHT_FUNK } from '../groove/grooves/straightFunk'
+import { swingOffset } from '../groove/swing'
 import type { Hit, Humanize, Source } from '../transport/source'
 import { createCountInSource } from './source'
 
@@ -270,6 +272,44 @@ describe('a groove wrapped and armed', () => {
 
     for (let n = 0; n < RUN; n += 1) {
       expect(wrapped.hitsAt(bare.steps + n).every((hit) => hit.voice !== 'claves')).toBe(true)
+    }
+  })
+})
+
+describe('a swung groove, wrapped and armed', () => {
+  const STRIDE = SECOND_LINE.steps / SECOND_LINE.subdivision
+  const RUN = STEPS_PER_BAR * CYCLE_BARS
+
+  const armed = (swing: number) =>
+    createCountInSource(createGrooveSource({ ...SECOND_LINE, swing }), () => true)
+
+  it('counts the bar in with no lilt on any step of it', () => {
+    const source = armed(SECOND_LINE_SWING)
+
+    for (let step = 0; step < SECOND_LINE.steps; step += 1) {
+      expect(source.displace?.(PROBE, step, SECONDS_PER_STEP)).toBe(0)
+    }
+  })
+
+  it('hands the groove its own swing phase, so the lilt still falls between the quarters', () => {
+    const swung = armed(SECOND_LINE_SWING)
+    const flat = armed(0)
+
+    for (let n = 0; n < RUN; n += 1) {
+      const step = SECOND_LINE.steps + n
+
+      for (const hit of swung.hitsAt(step)) {
+        const lilt =
+          swung.displace!(hit, step, SECONDS_PER_STEP) - flat.displace!(hit, step, SECONDS_PER_STEP)
+
+        expect(lilt).toBeCloseTo(
+          swingOffset(SECOND_LINE_SWING, n, SECONDS_PER_STEP, STRIDE),
+          12,
+        )
+
+        if (n % 2 === 0) expect(lilt).toBe(0)
+        else expect(lilt).toBeGreaterThan(0)
+      }
     }
   })
 })

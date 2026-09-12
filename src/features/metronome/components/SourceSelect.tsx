@@ -8,6 +8,7 @@ const OPTIONS: readonly SelectOption<SourceId>[] = [
   { value: 'rock', label: metronome.rock },
   { value: 'shuffle', label: metronome.shuffle },
   { value: 'straight-funk', label: metronome.straightFunk },
+  { value: 'second-line', label: metronome.secondLine },
 ]
 
 export function SourceSelect({

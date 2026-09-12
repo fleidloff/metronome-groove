@@ -8,6 +8,7 @@ import type { GrooveDefinition, Line } from './grooves/definition'
 import { sixInvariantViolations, undeclaredVoices } from './invariants'
 import { BOSSA_NOVA } from './grooves/bossaNova'
 import { ROCK } from './grooves/rock'
+import { SECOND_LINE } from './grooves/secondLine'
 import { SHUFFLE } from './grooves/shuffle'
 import { STRAIGHT_FUNK } from './grooves/straightFunk'
 
@@ -18,6 +19,7 @@ const EVERY_GROOVE: Record<Exclude<SourceId, 'click'>, GrooveDefinition> = {
   rock: ROCK,
   shuffle: SHUFFLE,
   'straight-funk': STRAIGHT_FUNK,
+  'second-line': SECOND_LINE,
 }
 
 const EVERY_GROOVE_BY_NAME = Object.entries(EVERY_GROOVE)

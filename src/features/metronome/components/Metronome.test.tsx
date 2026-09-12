@@ -594,10 +594,11 @@ describe(app.name, () => {
     const ROCK = 'rock'
     const BOSSA = 'bossa-nova'
     const SHUFFLE = 'shuffle'
+    const SECOND_LINE = 'second-line'
 
     const picker = () => screen.getByRole('combobox', { name: metronome.sound })
 
-    it('offers the click and all four grooves, with the click already chosen', () => {
+    it('offers the click and all five grooves, with the click already chosen', () => {
       render(<Metronome />)
 
       expect(
@@ -608,8 +609,27 @@ describe(app.name, () => {
         metronome.rock,
         metronome.shuffle,
         metronome.straightFunk,
+        metronome.secondLine,
       ])
       expect(picker()).toHaveValue('click')
+    })
+
+    it('never opens on second line, which gives the least reference of any groove', () => {
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(picker()).not.toHaveValue(SECOND_LINE)
+      expect(select).not.toHaveBeenCalledWith(SECOND_LINE)
+    })
+
+    it('asks for second line the moment it is chosen, like any other groove', () => {
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: SECOND_LINE } })
+
+      expect(select).toHaveBeenCalledWith(SECOND_LINE)
+      expect(picker()).toHaveValue(SECOND_LINE)
     })
 
     it('asks for the shuffle the moment it is chosen, like any other groove', () => {
@@ -902,6 +922,21 @@ describe(app.name, () => {
       expect(
         screen.getByRole('combobox', { name: metronome.sound }),
       ).toHaveValue('shuffle')
+    })
+
+    it('tells the transport about a restored second line, which SOURCE_IDS is what validates', () => {
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: 'second-line' }),
+      )
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(select).toHaveBeenCalledWith('second-line')
+      expect(select).not.toHaveBeenCalledWith('click')
+      expect(
+        screen.getByRole('combobox', { name: metronome.sound }),
+      ).toHaveValue('second-line')
     })
 
     it('tells the transport about a restored bossa, which SOURCE_IDS is what validates', () => {
