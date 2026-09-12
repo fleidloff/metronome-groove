@@ -1,6 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { app, metronome } from '@/lib/snippets'
+import {
+  DEFAULT_BPM as SETUP_DEFAULT_BPM,
+  SETUP_KEY,
+} from '../lib/setup/storedSetup'
 import { MAX_BPM, MIN_BPM } from '../lib/transport/tempo'
 import {
   BEATS_OF_SILENCE,
@@ -17,7 +21,9 @@ const PAST_ANY_WINDOW =
   Math.max(OPENING_WINDOW_S, BEATS_OF_SILENCE * (60 / SLOWEST)) * 1000 + 1
 import { Metronome, type Transport } from './Metronome'
 
-const DEFAULT_BPM = 120
+/** Imported rather than restated — a second copy is how 120 survived here
+ *  after the app moved to 100. */
+const DEFAULT_BPM = SETUP_DEFAULT_BPM
 
 function fakeTransport() {
   const listeners = new Set<(beat: number) => void>()
@@ -85,6 +91,12 @@ const clockOf = (times: readonly number[]) => {
 }
 
 describe(app.name, () => {
+  // The app persists its setup, so one test's tempo would otherwise open the
+  // next one.
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
   it('names itself to the player', () => {
     render(<Metronome />)
 
@@ -453,11 +465,13 @@ describe(app.name, () => {
       vi.useFakeTimers()
       try {
         const { transport, resume } = fakeTransport()
-        // Two taps in one coarsened clock tick — a double-fired event, or a
-        // held key on the focused button. This used to discard the attempt
-        // and leave nothing to bring the click back.
+        // Every tap on the same instant, so there is genuinely no interval to
+        // read. The old fixture was [10, 10.5, 10.5, 11], which stopped
+        // describing "no tempo" once a zero interval became a dropped outlier
+        // rather than a discarded attempt — it commits 120, and only matched
+        // because the default happened to be 120 too.
         render(
-          <Metronome transport={transport} now={clockOf([10, 10.5, 10.5, 11])} />,
+          <Metronome transport={transport} now={clockOf([10, 10, 10, 10])} />,
         )
 
         fireEvent.click(screen.getByRole('button', { name: metronome.start }))
@@ -477,11 +491,16 @@ describe(app.name, () => {
           <Metronome transport={transport} now={clockOf(TAPS_AT_150)} />,
         )
 
+        // Relative, because React's own scheduler holds timers under fake
+        // timers too — an absolute count was asserting against its internals.
+        const before = vi.getTimerCount()
         fireEvent.click(screen.getByRole('button', { name: metronome.tap }))
-        expect(vi.getTimerCount()).toBe(1)
+        expect(vi.getTimerCount()).toBe(before + 1)
 
         view.unmount()
-        expect(vi.getTimerCount()).toBe(0)
+        // Our commit timer is gone. Not zero: React keeps its own, and
+        // unmounting the component is not its business.
+        expect(vi.getTimerCount()).toBeLessThan(before + 1)
       } finally {
         vi.useRealTimers()
       }
@@ -759,6 +778,140 @@ describe(app.name, () => {
       // Last thing in the frame: there is nothing below it for it to displace,
       // and start is above it rather than under it.
       expect(credit.nextElementSibling).toBeNull()
+    })
+  })
+
+  describe('remembering the setup', () => {
+    const reopen = (transport: Transport) => {
+      cleanup()
+      return render(<Metronome transport={transport} />)
+    }
+
+    it('opens a first visit at 100 on the click', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        `${SETUP_DEFAULT_BPM} ${metronome.tempoUnit}`,
+      )
+      expect(screen.getByRole('combobox', { name: metronome.sound })).toHaveValue(
+        'click',
+      )
+    })
+
+    it('comes back on the tempo the slider was left at', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(screen.getByRole('slider', { name: metronome.tempo }), {
+        target: { value: '137' },
+      })
+
+      reopen(transport)
+      expect(screen.getByRole('status')).toHaveTextContent(
+        `137 ${metronome.tempoUnit}`,
+      )
+    })
+
+    it('comes back on the groove that was picked', () => {
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(screen.getByRole('combobox', { name: metronome.sound }), {
+        target: { value: 'straight-funk' },
+      })
+
+      reopen(transport)
+      expect(
+        screen.getByRole('combobox', { name: metronome.sound }),
+      ).toHaveValue('straight-funk')
+    })
+
+    it('remembers a tapped tempo, which no handler writes', () => {
+      // The tap commits through setBpm directly rather than through
+      // changeTempo, so a write placed in the handlers would forget this one.
+      vi.useFakeTimers()
+      try {
+        const { transport } = fakeTransport()
+        render(
+          <Metronome transport={transport} now={clockOf([10, 10.4, 10.8])} />,
+        )
+        const control = screen.getByRole('button', { name: metronome.tap })
+
+        for (let tap = 0; tap < 3; tap += 1) fireEvent.click(control)
+        act(() => {
+          vi.advanceTimersByTime(PAST_ANY_WINDOW)
+        })
+
+        expect(JSON.parse(window.localStorage.getItem(SETUP_KEY) ?? '{}').bpm).toBe(
+          150,
+        )
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('tells the transport once per change, from one place only', () => {
+      // The lesson of this change is that the handler is not the seam. If
+      // `changeSource` starts selecting again beside the effect, the transport
+      // is told twice — harmless today because it dedupes, and exactly the
+      // drift this test exists to notice.
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(screen.getByRole('combobox', { name: metronome.sound }), {
+        target: { value: 'straight-funk' },
+      })
+
+      expect(select).toHaveBeenCalledTimes(1)
+      expect(select).toHaveBeenCalledWith('straight-funk')
+    })
+
+    it('tells the transport about a restored groove, not just the select box', () => {
+      // Restoring set the state and left the transport on its default, so the
+      // box said straight-funk and pressing play gave you the click. Handlers
+      // are not the seam: a restore goes around them.
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 120, source: 'straight-funk' }),
+      )
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      expect(select).toHaveBeenCalledWith('straight-funk')
+    })
+
+    it('never writes its defaults over a stored setup while opening', () => {
+      // The read lands a frame after mount, so without a guard the persist
+      // effect fires first with the defaults and puts 100 on disk before 137
+      // replaces it. The end state is right either way, which is why only
+      // watching the writes catches it.
+      window.localStorage.setItem(
+        SETUP_KEY,
+        JSON.stringify({ version: 1, bpm: 137, source: 'straight-funk' }),
+      )
+      const written: string[] = []
+      const setItem = vi
+        .spyOn(Storage.prototype, 'setItem')
+        .mockImplementation((_key, value) => void written.push(value))
+
+      const { transport } = fakeTransport()
+      render(<Metronome transport={transport} />)
+      setItem.mockRestore()
+
+      expect(written.map((entry) => JSON.parse(entry).bpm)).not.toContain(
+        SETUP_DEFAULT_BPM,
+      )
+    })
+
+    it('opens on the defaults rather than breaking when storage holds junk', () => {
+      window.localStorage.setItem(SETUP_KEY, '{not json')
+      const { transport } = fakeTransport()
+
+      expect(() => render(<Metronome transport={transport} />)).not.toThrow()
+      expect(screen.getByRole('status')).toHaveTextContent(
+        `${SETUP_DEFAULT_BPM} ${metronome.tempoUnit}`,
+      )
     })
   })
 

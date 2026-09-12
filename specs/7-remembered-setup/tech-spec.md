@@ -102,11 +102,19 @@ One track, built in the lead per `/implement-vibe-with-docs` §4.
 12. **green** — the write guard.
 13. **red** — in the component: changing the tempo writes; changing the source
     writes; a mounted component starts from what was stored.
-14. **green** — seed `useState` from `readSetup()`, write in the two handlers.
+14. **green** — seed `useState` from `readSetup()` lazily, and persist from an
+    effect on `[bpm, source]` rather than from the handlers.
 
-**A note for whoever builds step 14.** The tempo has two writers — the slider
-and a committed tap — and both already funnel through `changeTempo`. Write
-there, not in each caller, or the tap path will be forgotten.
+**A note for whoever builds step 14, corrected during the build.** The tempo has
+two writers and **they do not share a path**: `changeTempo` handles the slider,
+and the tap's commit callback calls `setBpm` directly. The original note here
+claimed both funnelled through `changeTempo` — that was wrong, read from the
+wrong line, and building on it would have shipped a tap-set tempo that is never
+remembered.
+
+So the write cannot go in one handler. It goes in **an effect keyed on the
+values themselves**, which is the only place that sees every writer including
+ones added later.
 
 ## Waves
 
@@ -122,6 +130,7 @@ there, not in each caller, or the tap path will be forgotten.
 | :-- | :-- |
 | Reading storage during render breaks a server render | `readSetup` guards on `typeof window`; the lazy `useState` initialiser runs on the client. A test covers the no-storage path |
 | The defaults end up written in two places | They move into the setup module and the component imports them. `DEFAULT_BPM` currently appears in `Metronome.tsx` **and** its test — both must point at the one source |
-| A tap-committed tempo is not persisted | Called out in Track A step 14; the write goes in `changeTempo`, which both paths already use |
+| A tap-committed tempo is not persisted | **The reason the write is an effect and not a handler.** `setBpm` is called from two places that share no path, and a third would be easy to add. A test taps a tempo and asserts it was stored |
+| The seeding effect writes on mount and overwrites nothing useful | Writing what was just read is a no-op in content; the test that matters is that a *first* visit does not persist defaults over a real stored setup, which cannot happen since the read precedes the write |
 | The version check makes the per-value fallback unreachable | They are different layers and step 7 pins that: a *wrong version* discards, a *bad field* falls back |
 | Storage quota or private mode | `## Done when` 5. Both read and write swallow, and the app behaves exactly as it does today |

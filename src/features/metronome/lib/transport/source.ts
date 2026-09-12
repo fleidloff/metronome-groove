@@ -2,7 +2,15 @@ import type { Velocity } from '@/lib/velocity'
 
 export type VoiceName = 'claves' | 'kick' | 'snare' | 'hatClosed' | 'hatOpen'
 
-export type SourceId = 'click' | 'straight-funk'
+/**
+ * Every source the app has, as a value. The type derives from it so there is
+ * still one declaration — a validator that needs to check an id at runtime
+ * (reading a stored setup, say) checks against this rather than against a
+ * second copy of the union.
+ */
+export const SOURCE_IDS = ['click', 'straight-funk'] as const
+
+export type SourceId = (typeof SOURCE_IDS)[number]
 
 export interface Hit {
   readonly voice: VoiceName

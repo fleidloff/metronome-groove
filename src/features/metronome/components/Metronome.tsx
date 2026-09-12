@@ -9,6 +9,12 @@ import { app } from '@/lib/snippets'
 import { useClickTransport } from '../hooks/useClickTransport'
 import { useRemoteControl } from '../hooks/useRemoteControl'
 import type { SourceId } from '../lib/transport/source'
+import {
+  DEFAULT_BPM,
+  DEFAULT_SOURCE,
+  readSetup,
+  writeSetup,
+} from '../lib/setup/storedSetup'
 import { clampTempo } from '../lib/transport/tempo'
 import {
   addTap,
@@ -48,12 +54,6 @@ export interface Transport {
   onLoadingChange?(listener: (loading: boolean) => void): () => void
 }
 
-const DEFAULT_BPM = 120
-
-/** The click, because it is what the app is today and it costs one small file
- *  to a first-time visitor. */
-const DEFAULT_SOURCE: SourceId = 'click'
-
 /** Monotonic seconds, to match what `addTap` expects. */
 const systemClock = () => performance.now() / 1000
 
@@ -77,6 +77,9 @@ export function Metronome({
   const [beat, setBeat] = useState<number | null>(null)
   const [armed, setArmed] = useState(false)
   const [source, setSource] = useState<SourceId>(DEFAULT_SOURCE)
+  const [restored, setRestored] = useState(false)
+  /** What the transport has been told, so it is not told the same thing twice. */
+  const told = useRef<SourceId>(DEFAULT_SOURCE)
   /** The samples are still arriving. Only worth saying once sound has been
    *  asked for — before that the control's job is to offer the press. */
   const [loading, setLoading] = useState(false)
@@ -168,18 +171,74 @@ export function Metronome({
     }, windowFor(next) * 1000)
   }
 
+  /**
+   * Read **after** mount, not during render.
+   *
+   * This route is statically prerendered, so the server's HTML carries the
+   * defaults and cannot know what any one player stored. Seeding state from
+   * storage during render therefore hydrates a different value than the markup
+   * says — React recovers by throwing the server tree away and re-rendering on
+   * the client, which works but is an error path with a flash. Applying it a
+   * frame later is the same outcome without the error.
+   */
+  /* eslint-disable react-hooks/set-state-in-effect -- reading a client-only
+     store on mount is the one shape this rule cannot express. The alternatives
+     are worse: seeding during render hydrates against prerendered defaults and
+     makes React throw the server tree away, and useSyncExternalStore hands back
+     a value that useState would still only read on the client — the same
+     mismatch by another route. */
+  useEffect(() => {
+    const stored = readSetup()
+    setBpm(stored.bpm)
+    setSource(stored.source)
+    setRestored(true)
+  }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /**
+   * The transport is told from an effect for the same reason the setup is
+   * persisted from one: a restore goes *around* the handlers. Selecting in
+   * `changeSource` alone left a reloaded page showing straight-funk in the box
+   * and playing the click, because nothing had told the transport.
+   *
+   * `told` mirrors what the transport already has, starting at its own default.
+   * That single guard does all the work: before the restore lands, `source` is
+   * still the default and nothing is said, so a player who only ever presses
+   * Start never downloads a kit they did not ask for. A `restored` gate here
+   * as well read as load-bearing and was not — no mutation of it could fail a
+   * test.
+   */
+  useEffect(() => {
+    if (told.current === source) return
+    told.current = source
+    click.select?.(source)
+  }, [source, click])
+
+  /**
+   * Persisted from an effect rather than from the handlers, because the two
+   * things that set a tempo share no path: the slider goes through
+   * `changeTempo`, and a committed tap calls `setBpm` directly. A write in one
+   * handler would silently forget the other, and a third writer would be easy
+   * to add without noticing.
+   *
+   * Gated on `restored` so the mount render cannot write its defaults over a
+   * real stored setup before the read has landed.
+   */
+  useEffect(() => {
+    if (!restored) return
+    writeSetup({ bpm, source })
+  }, [restored, bpm, source])
+
   // The speaker's button is the Start/Stop control, pressed from across the
   // room. Armed by the first on-screen press, because a browser will not let a
   // page claim a media session before the player has touched it. Does nothing
   // at all on a browser that refuses the session.
   useRemoteControl(toggle, { armed })
 
-  /** The gesture that buys the download. Nothing is fetched before it, and a
-   *  run in progress carries on with whatever was picked. */
+  /** A run in progress carries on with whatever was picked. */
   const changeSource = (next: SourceId) => {
     arm()
     setSource(next)
-    click.select?.(next)
   }
 
   const changeTempo = (next: number) => {

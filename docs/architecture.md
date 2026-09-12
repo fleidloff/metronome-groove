@@ -81,6 +81,8 @@ The arrows, each with an import behind it:
 | :-- | :-- |
 | `components/` → `lib/transport/` | the composer reads `tempo.ts`'s range |
 | `components/` → `lib/tap/` | the composer records taps and commits on the silence |
+| `components/` → `lib/setup/` | the composer reads the remembered setup after mount and writes it on change |
+| `lib/setup/` → `lib/transport/` | `storedSetup.ts` validates a stored tempo with `isTempo` and a stored id against `SOURCE_IDS`, rather than keeping second copies |
 | `hooks/` → `lib/remote/` | `useRemoteControl.ts` binds the speaker's button |
 | `lib/tap/` → `lib/transport/` | `tapTempo.ts` reads `MIN_BPM`/`MAX_BPM` to refuse a tempo it cannot play |
 | `hooks/` → `lib/transport/` | `useClickTransport.ts` builds the scheduler and the audio clock |
@@ -95,19 +97,28 @@ The arrows, each with an import behind it:
 Zone 6 enforces the one that matters: nothing in `lib/` reaches back up into
 UI, a hook or the store.
 
-**`lib/remote/` is the slice's third concern folder**, and the only one that
+The slice now holds six concern folders — `click/`, `groove/`, `remote/`,
+`setup/`, `tap/` and `transport/`.
+
+**`lib/remote/` is the one that**
 touches a platform API the app cannot schedule around. It owns the media
 session and the silent element that claims it; nothing else in the slice knows
 either exists. Why it is shaped that way — and why the feature is absent on
 Firefox rather than degraded — is
 [ADR 0004](adr/0004-bluetooth-media-buttons.md).
 
-**`lib/tap/` → `lib/transport/` is the first arrow between two concern folders,
-and nothing guards its direction.** The reverse — `lib/transport/` importing
-`lib/tap/` — would be wrong (the scheduler has no business knowing how a tempo
-was arrived at) and would pass lint today. That is a review-only rule until a
-second such pair makes a zone worth writing, which is the same measured-growth
-test a door has to meet.
+**Two arrows now run between concern folders, and nothing guards either
+direction.** `lib/tap/` → `lib/transport/` reads the tempo range; `lib/setup/` →
+`lib/transport/` validates a stored tempo and a stored source id against the
+same place. Both reverses would be wrong — the scheduler has no business knowing
+how a tempo was arrived at, or that one was ever stored — and both would pass
+lint today.
+
+**That is the measured growth a zone waits for.** One such pair was a
+review-only rule; two is the point at which it is worth writing down that
+`lib/transport/` is a leaf among the concern folders. Adding the zone is one
+entry in `eslint.config.mjs`, and the next change that touches this area should
+weigh it rather than adding a third arrow quietly.
 
 **V6 added three more such arrows and one of them matters more than the others.**
 `lib/click/` and `lib/groove/` both depend on `lib/transport/`, which is the

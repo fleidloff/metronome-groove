@@ -36,10 +36,38 @@ So this change remembers **what is set up**, never **what is running**. That is
 a constraint rather than a decision, and it is recorded here so nobody spends a
 question on it later.
 
+## Found on reload, after the tests were green
+
+> *"When I reload the page, settings were persisted just fine. The groove is
+> also selected. But when I press play, it would still play the click instead of
+> the funk (what also the select box says)."*
+
+**The state was restored and the transport was never told.** `changeSource`
+called `click.select?.(next)`, and a restore goes *around* the handlers — so the
+select box said straight-funk and the transport was still on its default.
+
+**It is the same defect as the tempo one, found twice in one change.** The tech
+spec had already been corrected mid-build for claiming both tempo writers shared
+a path; this is that lesson again, one field over. The rule it produces:
+
+> **A handler is not the seam.** Anything the component must tell an external
+> system belongs in an effect keyed on the value, because restoring, and any
+> future writer, goes around handlers by definition.
+
+The tempo escaped only by luck — `toggle` passes the current bpm into
+`click.start(bpm)`, so the transport is told at the moment it matters. The
+source had no such path.
+
+Fixed with an effect on `[restored, source]`, guarded by what the transport has
+already been told so a first visit still fetches nothing it was not asked for.
+
+**Signed off on reload, 2026-09-12** — *"perfect, works now"*.
+
 ## Done when
 
-1. **The tempo and the groove survive a reload.** Set both, reload, and the app
-   comes back with them — without the click running, which V4's finding makes
+1. **The tempo and the groove survive a reload** — in the controls *and* in
+   what actually plays. Set both, reload, press start, and you hear the groove
+   you picked. No click running before that press, which V4's finding makes
    impossible anyway.
 2. **A first-ever visit opens at 100 bpm** and the click, with nothing stored.
 3. **Each stored value is validated on its own and falls back silently** — a
