@@ -1,6 +1,7 @@
 import { act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Transport } from '../components/Metronome'
+import type { SourceId } from '../lib/transport/source'
 import {
   useClickTransport,
   type Audio,
@@ -42,8 +43,11 @@ function fakeAudio() {
     },
   }
 
-  const factory: AudioFactory = () => {
+  const asked: SourceId[] = []
+
+  const factory: AudioFactory = (_bpm, source) => {
     built.count += 1
+    asked.push(source)
     return new Promise<Audio>((resolve) => {
       release = resolve
     })
@@ -52,6 +56,7 @@ function fakeAudio() {
   return {
     factory,
     built,
+    asked,
     close,
     stopSounding,
     stop,
@@ -330,5 +335,155 @@ describe('the click transport suspended between taps', () => {
 
     expect(device.start).toHaveBeenCalledTimes(1)
     expect(device.setTempo).not.toHaveBeenCalledWith(90)
+  })
+})
+
+describe('the transport choosing what it plays', () => {
+  const GROOVE: SourceId = 'straight-funk'
+
+  it('builds the click when start is the first thing that happens', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+
+    expect(device.asked).toEqual(['click'])
+  })
+
+  it('builds the groove the moment it is chosen, with no start in sight', () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(GROOVE))
+
+    // The fetch belongs to the gesture that asked for it, so the 550 KB is
+    // already moving before the hand goes back to the instrument.
+    expect(device.asked).toEqual([GROOVE])
+    expect(device.start).not.toHaveBeenCalled()
+  })
+
+  it('builds nothing when the source asked for is the one it already has', () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.('click'))
+
+    expect(device.built.count).toBe(0)
+  })
+
+  it('waits for the samples rather than sounding a silent bar', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(GROOVE))
+    act(() => transport().start(120))
+
+    expect(device.start).not.toHaveBeenCalled()
+    expect(device.built.count).toBe(1)
+
+    await device.finishLoading()
+    expect(device.start).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports the wait, from the choice until the device arrives', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    const seen: boolean[] = []
+    act(() => {
+      transport().onLoadingChange?.((loading) => seen.push(loading))
+    })
+    expect(seen).toEqual([false])
+
+    act(() => transport().select?.(GROOVE))
+    expect(seen).toEqual([false, true])
+
+    await device.finishLoading()
+    expect(seen).toEqual([false, true, false])
+  })
+
+  it('reports the wait for a start that has to build its own device', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    const seen: boolean[] = []
+    act(() => {
+      transport().onLoadingChange?.((loading) => seen.push(loading))
+    })
+
+    act(() => transport().start(120))
+    expect(seen).toEqual([false, true])
+
+    await device.finishLoading()
+    expect(seen).toEqual([false, true, false])
+  })
+
+  it('stops reporting to a listener that unsubscribed', () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    const seen: boolean[] = []
+    let off: (() => void) | undefined
+    act(() => {
+      off = transport().onLoadingChange?.((loading) => seen.push(loading))
+    })
+    off?.()
+
+    act(() => transport().select?.(GROOVE))
+
+    expect(seen).toEqual([false])
+  })
+
+  it('reports a groove that will not load rather than failing silently', async () => {
+    const failed: AudioFactory = () => Promise.reject(new Error('no decoder'))
+    const onFailure = vi.fn()
+    const { transport } = mount(failed, onFailure)
+
+    await act(async () => {
+      transport().select?.(GROOVE)
+    })
+
+    expect(onFailure).toHaveBeenCalledOnce()
+  })
+
+  it('lets the old device go when the source changes', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    act(() => transport().select?.(GROOVE))
+
+    expect(device.stop).toHaveBeenCalled()
+    expect(device.stopSounding).toHaveBeenCalled()
+    expect(device.close).toHaveBeenCalled()
+  })
+
+  it('carries a run across the change, so the groove starts once it has arrived', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().start(120))
+    await device.finishLoading()
+    device.start.mockClear()
+
+    act(() => transport().select?.(GROOVE))
+    expect(device.start).not.toHaveBeenCalled()
+
+    await device.finishLoading()
+    expect(device.start).toHaveBeenCalledTimes(1)
+    expect(device.asked).toEqual(['click', GROOVE])
+  })
+
+  it('leaves a stopped click stopped when the groove is chosen', async () => {
+    const device = fakeAudio()
+    const { transport } = mount(device.factory)
+
+    act(() => transport().select?.(GROOVE))
+    await device.finishLoading()
+
+    expect(device.start).not.toHaveBeenCalled()
+    expect(vi.mocked(globalThis.requestAnimationFrame)).not.toHaveBeenCalled()
   })
 })

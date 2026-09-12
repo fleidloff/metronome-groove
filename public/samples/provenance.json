@@ -1,5 +1,5 @@
 {
-  "note": "Provenance for every sample shipped in this app. Copied from the sibling project's pack; the files are byte-identical to it, so these records stay true. CC0 requires no attribution \u2014 this exists so nobody has to rediscover what a file is or what was done to it.",
+  "note": "Provenance for every sample shipped in this app. Copied from the sibling project's pack; the files are byte-identical to it, so these records stay true. The MuldjordKit files are CC-BY 4.0 and the attribution they require is shown in the app; the claves file is CC0 and requires none. This exists so nobody has to rediscover what a file is or what was done to it.",
   "samples": [
     {
       "file": "claves_mf.flac",
@@ -7,8 +7,279 @@
       "sourceFile": "Idiophones/Struck Idiophones/Claves/Legacy/claves_mf.wav",
       "url": "https://github.com/sgossner/VCSL",
       "licence": "CC0",
-      "modifications": "capped at 0.4 s, faded out over the last 80 ms, downmixed to mono, 44.1 kHz 16-bit FLAC (not trimmed: the source lead-in is kept; not normalised: the take-to-take level difference is the round-robin variation the renderer plays) then resampled down a perfect fifth (playback ratio 2^(-7/12) = 0.66742, so the strongest partial moves from 2337 Hz to 1556 Hz) and re-capped at 0.4 s with a fresh 80 ms fade-out \u2014 a bigger pair of sticks, and the take-to-take level difference is preserved: the two alternates were 2.53 dB apart before and are 2.50 dB apart after",
+      "modifications": "capped at 0.4 s, faded out over the last 80 ms, downmixed to mono, 44.1 kHz 16-bit FLAC (not trimmed: the source lead-in is kept; not normalised: the take-to-take level difference is the round-robin variation the renderer plays) then resampled down a perfect fifth (playback ratio 2^(-7/12) = 0.66742, so the strongest partial moves from 2337 Hz to 1556 Hz) and re-capped at 0.4 s with a fresh 80 ms fade-out — a bigger pair of sticks, and the take-to-take level difference is preserved: the two alternates were 2.53 dB apart before and are 2.50 dB apart after",
       "shippedAs": "/samples/claves_mf.flac"
+    },
+    {
+      "file": "hatClosed_v44_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/10-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v44_10-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v44_rr1.flac"
+    },
+    {
+      "file": "hatClosed_v44_rr2.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/12-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v44_12-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v44_rr2.flac"
+    },
+    {
+      "file": "hatClosed_v44_rr3.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/14-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v44_14-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v44_rr3.flac"
+    },
+    {
+      "file": "hatClosed_v71_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/16-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v71_16-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v71_rr1.flac"
+    },
+    {
+      "file": "hatClosed_v71_rr2.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/18-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v71_18-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v71_rr2.flac"
+    },
+    {
+      "file": "hatClosed_v71_rr3.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/20-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v71_20-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v71_rr3.flac"
+    },
+    {
+      "file": "hatClosed_v98_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/20-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v98_20-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v98_rr1.flac"
+    },
+    {
+      "file": "hatClosed_v98_rr2.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/22-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v98_22-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v98_rr2.flac"
+    },
+    {
+      "file": "hatClosed_v98_rr3.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/24-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v98_24-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v98_rr3.flac"
+    },
+    {
+      "file": "hatClosed_v127_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/26-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v127_26-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v127_rr1.flac"
+    },
+    {
+      "file": "hatClosed_v127_rr2.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/27-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v127_27-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v127_rr2.flac"
+    },
+    {
+      "file": "hatClosed_v127_rr3.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatClosed/28-HihatClosed.flac",
+      "packFile": "hatClosed/Muldjord_hatClosed_v127_28-HihatClosed.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatClosed_v127_rr3.flac"
+    },
+    {
+      "file": "snare_v44_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/Snare1/25-Snare.flac",
+      "packFile": "snare/Muldjord_snare_v44_25-Snare.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/snare_v44_rr1.flac"
+    },
+    {
+      "file": "snare_v44_rr2.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/Snare1/30-Snare.flac",
+      "packFile": "snare/Muldjord_snare_v44_30-Snare.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/snare_v44_rr2.flac"
+    },
+    {
+      "file": "snare_v44_rr3.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/Snare1/33-Snare.flac",
+      "packFile": "snare/Muldjord_snare_v44_33-Snare.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/snare_v44_rr3.flac"
+    },
+    {
+      "file": "snare_v127_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/Snare1/51-Snare.flac",
+      "packFile": "snare/Muldjord_snare_v127_51-Snare.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/snare_v127_rr1.flac"
+    },
+    {
+      "file": "snare_v127_rr2.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/Snare1/53-Snare.flac",
+      "packFile": "snare/Muldjord_snare_v127_53-Snare.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/snare_v127_rr2.flac"
+    },
+    {
+      "file": "snare_v127_rr3.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/Snare1/55-Snare.flac",
+      "packFile": "snare/Muldjord_snare_v127_55-Snare.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/snare_v127_rr3.flac"
+    },
+    {
+      "file": "kick_v80_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/KdrumL/16-KdrumL.flac",
+      "packFile": "kick/Muldjord_kick_v80_16-KdrumL.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/kick_v80_rr1.flac"
+    },
+    {
+      "file": "kick_v80_rr2.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/KdrumL/17-KdrumL.flac",
+      "packFile": "kick/Muldjord_kick_v80_17-KdrumL.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/kick_v80_rr2.flac"
+    },
+    {
+      "file": "kick_v80_rr3.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/KdrumL/19-KdrumL.flac",
+      "packFile": "kick/Muldjord_kick_v80_19-KdrumL.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/kick_v80_rr3.flac"
+    },
+    {
+      "file": "hatOpen_v98_rr1.flac",
+      "source": "MuldjordKit (FreePats edition), by Lars Muldjord",
+      "sourceFile": "samples/HihatOpen/20-HihatOpen.flac",
+      "packFile": "hatOpen/Muldjord_hatOpen_v98_20-HihatOpen.flac",
+      "url": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+      "licence": "CC-BY-4.0",
+      "attribution": "Drum samples provided by DrumGizmo.org",
+      "licenceText": "LICENSE-MuldjordKit.txt",
+      "modifications": "None in this repo — copied byte for byte from the sibling pack, where it was trimmed, faded out, downmixed to mono, 44.1 kHz 16-bit FLAC. Deliberately not re-normalised, not re-encoded and not re-trimmed: the level difference between velocity layers is the dynamic information the manifest reads.",
+      "shippedAs": "/samples/hatOpen_v98_rr1.flac"
     }
-  ]
+  ],
+  "attributions": [
+    "Drum samples provided by DrumGizmo.org"
+  ],
+  "licences": {
+    "CC0": "No attribution required.",
+    "CC-BY-4.0": "Attribution required. Full text ships beside the samples as LICENSE-MuldjordKit.txt."
+  }
 }

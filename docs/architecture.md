@@ -68,17 +68,28 @@ folders, `lib/click/` and `lib/tap/`, which is exactly what this section said
 would mean it was time to draw one. So here it is, small because the graph is
 small.
 
+**V6 reshaped it.** `lib/click/` used to hold both the transport and the click's
+own sound. A second source made that name wrong, so the clock, the scheduler and
+`tempo.ts` moved to `lib/transport/`, `lib/click/` kept the claves and its
+pattern, and `lib/groove/` arrived beside them. Each folder now says what it
+computes, which is the rule
+[coding-guidelines.md](coding-guidelines.md#feature-slices) already gave.
+
 The arrows, each with an import behind it:
 
 | Arrow | Behind it |
 | :-- | :-- |
-| `components/` → `lib/click/` | the composer reads `tempo.ts`'s range |
+| `components/` → `lib/transport/` | the composer reads `tempo.ts`'s range |
 | `components/` → `lib/tap/` | the composer records taps and commits on the silence |
 | `hooks/` → `lib/remote/` | `useRemoteControl.ts` binds the speaker's button |
-| `lib/tap/` → `lib/click/` | `tapTempo.ts` reads `MIN_BPM`/`MAX_BPM` to refuse a tempo it cannot play |
-| `hooks/` → `lib/click/` | `useClickTransport.ts` builds the scheduler and the audio clock |
-| `hooks/` → `components/` | **type-only**: the hook imports `Transport` from `Metronome.tsx`, pointing at its own consumer. No zone forbids it and it erases at build, but the contract would sit better in `lib/click/` |
-| `lib/click/` → `@/lib/velocity` | gain per beat, and nothing else in the app |
+| `lib/tap/` → `lib/transport/` | `tapTempo.ts` reads `MIN_BPM`/`MAX_BPM` to refuse a tempo it cannot play |
+| `hooks/` → `lib/transport/` | `useClickTransport.ts` builds the scheduler and the audio clock |
+| `hooks/` → `lib/click/`, `lib/groove/` | the hook picks which `Source` is playing and builds that voice bank |
+| `lib/groove/` → `lib/transport/` | `groove/source.ts` implements the `Source` the transport walks |
+| `lib/click/` → `lib/transport/` | `click/source.ts` does the same for the click |
+| `hooks/` → `components/` | **type-only**: the hook imports `Transport` from `Metronome.tsx`, pointing at its own consumer. No zone forbids it and it erases at build, but the contract would sit better in `lib/transport/` |
+| `lib/transport/`, `lib/groove/` → `@/lib/velocity` | gain per hit |
+| `lib/transport/`, `lib/groove/` → `@/lib/steps` | the step grid, and what lands on a quarter |
 | `components/`, `lib/` → `@/lib/snippets` | every word the user is shown |
 
 Zone 6 enforces the one that matters: nothing in `lib/` reaches back up into
@@ -91,15 +102,23 @@ either exists. Why it is shaped that way — and why the feature is absent on
 Firefox rather than degraded — is
 [ADR 0004](adr/0004-bluetooth-media-buttons.md).
 
-**`lib/tap/` → `lib/click/` is the first arrow between two concern folders, and
-nothing guards its direction.** The reverse — `lib/click/` importing `lib/tap/`
-— would be wrong (the scheduler has no business knowing how a tempo was
-arrived at) and would pass lint today. That is a review-only rule until a
+**`lib/tap/` → `lib/transport/` is the first arrow between two concern folders,
+and nothing guards its direction.** The reverse — `lib/transport/` importing
+`lib/tap/` — would be wrong (the scheduler has no business knowing how a tempo
+was arrived at) and would pass lint today. That is a review-only rule until a
 second such pair makes a zone worth writing, which is the same measured-growth
 test a door has to meet.
 
-`lib/click/` has no `index.ts` and has not earned one — its modules are imported
-directly, which
+**V6 added three more such arrows and one of them matters more than the others.**
+`lib/click/` and `lib/groove/` both depend on `lib/transport/`, which is the
+right direction: the transport defines `Source` and neither source-shaped folder
+is anything the transport knows about. The rule to hold at review is that
+`lib/transport/` must never import either of them. It would pass lint, and it
+would make the transport know about one particular groove — which is exactly why
+`displace` and `trim` sit on the `Source` rather than in the scheduler.
+
+No concern folder in the slice has an `index.ts`, and none has earned one — the
+modules are imported directly, which
 [coding-guidelines.md](coding-guidelines.md#feature-slices) says is correct
 until measured growth says otherwise.
 

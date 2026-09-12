@@ -16,3 +16,6 @@ record is edited to ⛔ **Superseded by**. Nothing here is deleted.
 | [0003](0003-snippets.md) | User-facing text lives in `src/lib/snippets/`, by language | ✅ Accepted | 2026-09-12 |
 | [0004](0004-bluetooth-media-buttons.md) | What a Bluetooth speaker's button can and cannot do | ✅ Accepted | 2026-09-12 |
 | [0005](0005-styling-lives-in-the-design-system.md) | Styling lives in the design system, and a feature holds none | ✅ Accepted | 2026-09-12 |
+| [0006](0006-rhythm-instruments-only.md) | Rhythm instruments only, never anything melodic | ✅ Accepted | 2026-09-12 |
+| [0007](0007-a-groove-is-humanized-a-click-is-not.md) | A groove is humanized in time; the click never is | ✅ Accepted | 2026-09-12 |
+| [0008](0008-sample-calibration-is-derived-not-copied.md) | A sample's velocity calibration is derived here, never copied from the sibling pack | ✅ Accepted | 2026-09-12 |

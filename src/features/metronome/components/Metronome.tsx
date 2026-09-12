@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import { PageFrame } from '@/components/layout/PageFrame'
 import { Stack } from '@/components/layout/Stack'
 import { Eyebrow } from '@/components/typography/Eyebrow'
+import { FinePrint } from '@/components/typography/FinePrint'
 import { app } from '@/lib/snippets'
 import { useClickTransport } from '../hooks/useClickTransport'
 import { useRemoteControl } from '../hooks/useRemoteControl'
-import { clampTempo } from '../lib/click/tempo'
+import type { SourceId } from '../lib/transport/source'
+import { clampTempo } from '../lib/transport/tempo'
 import {
   addTap,
   commit,
@@ -16,6 +18,7 @@ import {
   type TapState,
 } from '../lib/tap/tapTempo'
 import { BeatRow } from './BeatRow'
+import { SourceSelect } from './SourceSelect'
 import { StartStopButton } from './StartStopButton'
 import { TapTempoButton } from './TapTempoButton'
 import { TempoControl } from './TempoControl'
@@ -33,9 +36,23 @@ export interface Transport {
    *  running. A no-op otherwise. */
   resume(bpm: number): void
   onBeat(listener: (beat: number) => void): () => void
+  /**
+   * Which source sounds. Selecting one is what starts its samples downloading,
+   * so a player who never leaves the click never fetches the kit.
+   *
+   * Optional, with `onLoadingChange`, so a test can drive the click alone.
+   */
+  select?(id: SourceId): void
+  /** Reports whether the selected source's samples are still arriving, and
+   *  reports the current answer on subscribing. */
+  onLoadingChange?(listener: (loading: boolean) => void): () => void
 }
 
 const DEFAULT_BPM = 120
+
+/** The click, because it is what the app is today and it costs one small file
+ *  to a first-time visitor. */
+const DEFAULT_SOURCE: SourceId = 'click'
 
 /** Monotonic seconds, to match what `addTap` expects. */
 const systemClock = () => performance.now() / 1000
@@ -59,12 +76,18 @@ export function Metronome({
   const [running, setRunning] = useState(false)
   const [beat, setBeat] = useState<number | null>(null)
   const [armed, setArmed] = useState(false)
+  const [source, setSource] = useState<SourceId>(DEFAULT_SOURCE)
+  /** The samples are still arriving. Only worth saying once sound has been
+   *  asked for — before that the control's job is to offer the press. */
+  const [loading, setLoading] = useState(false)
   const attempt = useRef({
     state: EMPTY_TAPS as TapState,
     timer: null as ReturnType<typeof setTimeout> | null,
   })
 
   useEffect(() => click.onBeat(setBeat), [click])
+
+  useEffect(() => click.onLoadingChange?.(setLoading), [click])
 
   useEffect(() => {
     const live = attempt.current
@@ -151,6 +174,14 @@ export function Metronome({
   // at all on a browser that refuses the session.
   useRemoteControl(toggle, { armed })
 
+  /** The gesture that buys the download. Nothing is fetched before it, and a
+   *  run in progress carries on with whatever was picked. */
+  const changeSource = (next: SourceId) => {
+    arm()
+    setSource(next)
+    click.select?.(next)
+  }
+
   const changeTempo = (next: number) => {
     arm()
 
@@ -165,9 +196,13 @@ export function Metronome({
       <BeatRow current={beat} />
       <TempoControl bpm={bpm} onChange={changeTempo} />
       <Stack gap={4}>
-        <StartStopButton running={running} onToggle={toggle} />
+        <SourceSelect value={source} onChange={changeSource} />
+        <StartStopButton running={running} loading={running && loading} onToggle={toggle} />
         <TapTempoButton onTap={tap} />
       </Stack>
+      {/* CC-BY 4.0 on the kit: an obligation, not decoration. It is the last
+          thing in the page and has nothing above it to push down. */}
+      <FinePrint>{app.sampleCredit}</FinePrint>
     </PageFrame>
   )
 }

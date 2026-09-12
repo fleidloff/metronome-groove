@@ -2,7 +2,7 @@ import { Slider } from '@/components/controls/Slider'
 import { Readout } from '@/components/display/Readout'
 import { Stack } from '@/components/layout/Stack'
 import { metronome } from '@/lib/snippets'
-import { MAX_BPM, MIN_BPM } from '../lib/click/tempo'
+import { MAX_BPM, MIN_BPM } from '../lib/transport/tempo'
 
 export function TempoControl({
   bpm,

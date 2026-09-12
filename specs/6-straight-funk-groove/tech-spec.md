@@ -158,8 +158,31 @@ export interface Source {
   readonly steps: number              // 4 for the click, 16 for the groove
   readonly humanize: Humanize | null  // null for the click, and only the click
   hitsAt(step: number): readonly Hit[]
+  displace(hit, step, stepSeconds): number  // seconds; 0 when not humanized
+  trim(hit, step): number                   // gain multiplier; 1 when not humanized
 }
 ```
+
+**Two further contract changes were made mid-build by Track B**, both additive
+and both reviewed in the lead:
+
+* `displace` and `trim` are **optional**. Every scheduler fixture omits them,
+  and the scheduler reads `source.displace?.(…) ?? 0` / `trim?.(…) ?? 1` — which
+  is exactly the "0 and 1 when not humanized" the contract already specified in
+  prose.
+* `Clock.schedule` takes a third argument, `Placement { step, gain }`. Without
+  it the contract is unimplementable: round-robin must index the **absolute**
+  step and the take is chosen inside the audio clock, which `schedule(at, hit)`
+  gives no step to; and `trim` is a gain applied *after* layer selection, which
+  also happens inside the clock and cannot be folded into `hit.velocity`,
+  because Track A asserts `hit.velocity` arrives untouched.
+
+**`displace` and `trim` were added to the contract mid-build**, when Track A
+found the original `Source` declared a `Humanize` record with no way to apply
+it. The source owns them rather than the scheduler: a transport that reached
+into `groove/humanize.ts` would be a transport that knows about one particular
+groove. `humanize` stays as the declaration of intent — and `null` on the click
+is what D1 asserts — while these two do the work.
 
 **Lead-in moves onto the voice.** It is a property of a sample, not of the
 scheduler: claves 8.3 ms, every kit voice 0. This is the single change that
@@ -210,6 +233,13 @@ it, so there is no second slice that ships and verifies alone.
 2. **green** — `lib/click/` reduced to the claves and its pattern, re-expressed
    as a `Source`
 3. **green** — lead-in per voice; `CLAVES_LEAD_IN_S` stays in `click/`
+4. **green** — **the open-hat choke.** `audioClock.ts` moves to `transport/`
+   and gains it: when a voice sounds that chokes another, the ringing source is
+   ramped to zero over ~10 ms rather than left to decay. `hatOpen` is choked by
+   `hatClosed`. Added mid-build — Track D found it assigned to no track, and it
+   is an audio-node operation, so it belongs to whoever owns the `Clock`
+   implementation. Without it the open hat on step 14 rings about a second into
+   a 2.4 s bar and sounds over the next downbeat.
 
 ### Track C — the kit and its samples
 

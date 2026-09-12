@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { app, metronome } from '@/lib/snippets'
-import { MAX_BPM, MIN_BPM } from '../lib/click/tempo'
+import { MAX_BPM, MIN_BPM } from '../lib/transport/tempo'
 import {
   BEATS_OF_SILENCE,
   OPENING_WINDOW_S,
 } from '../lib/tap/tapTempo'
-import { MIN_BPM as SLOWEST } from '../lib/click/tempo'
+import { MIN_BPM as SLOWEST } from '../lib/transport/tempo'
 
 /**
  * Past any window an attempt can have. The opening window is a flat 2 s, but a
@@ -26,7 +26,9 @@ function fakeTransport() {
   const setTempo = vi.fn()
   const suspend = vi.fn()
   const resume = vi.fn()
+  const select = vi.fn()
   const unsubscribe = vi.fn()
+  const loadingListeners = new Set<(loading: boolean) => void>()
 
   const transport: Transport = {
     start,
@@ -34,11 +36,19 @@ function fakeTransport() {
     setTempo,
     suspend,
     resume,
+    select,
     onBeat(listener) {
       listeners.add(listener)
       return () => {
         listeners.delete(listener)
         unsubscribe()
+      }
+    },
+    onLoadingChange(listener) {
+      loadingListeners.add(listener)
+      listener(false)
+      return () => {
+        loadingListeners.delete(listener)
       }
     },
   }
@@ -48,7 +58,23 @@ function fakeTransport() {
       listeners.forEach((listener) => listener(index))
     })
 
-  return { transport, start, stop, setTempo, suspend, resume, unsubscribe, beat }
+  const loading = (value: boolean) =>
+    act(() => {
+      loadingListeners.forEach((listener) => listener(value))
+    })
+
+  return {
+    transport,
+    start,
+    stop,
+    setTempo,
+    suspend,
+    resume,
+    select,
+    unsubscribe,
+    beat,
+    loading,
+  }
 }
 
 /** The test owns the clock: a tap reads the next time in this list, so the
@@ -571,6 +597,168 @@ describe(app.name, () => {
       view.unmount()
 
       expect(device.bound()).toBe(0)
+    })
+  })
+
+  describe('what it plays', () => {
+    const GROOVE = 'straight-funk'
+
+    const picker = () => screen.getByRole('combobox', { name: metronome.sound })
+
+    it('offers the click and the groove, with the click already chosen', () => {
+      render(<Metronome />)
+
+      expect(
+        screen.getAllByRole('option').map((option) => option.textContent),
+      ).toEqual([metronome.click, metronome.straightFunk])
+      expect(picker()).toHaveValue('click')
+    })
+
+    it('asks for nothing but the click until someone picks something else', () => {
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.click(screen.getByRole('button', { name: metronome.start }))
+
+      // Choosing is what buys the download, so a player who only ever presses
+      // Start never fetches a kit they did not ask for.
+      expect(select).not.toHaveBeenCalled()
+    })
+
+    it('asks for the groove the moment it is chosen, which is what starts its fetch', () => {
+      const { transport, select } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: GROOVE } })
+
+      expect(select).toHaveBeenCalledWith(GROOVE)
+      expect(picker()).toHaveValue(GROOVE)
+    })
+
+    it('is a gesture like any other, so it arms the speaker button', () => {
+      const { transport } = fakeTransport()
+      const handlers = new Map<string, () => void>()
+      vi.stubGlobal('navigator', {
+        ...globalThis.navigator,
+        mediaSession: {
+          setActionHandler: (action: string, handler: (() => void) | null) => {
+            if (handler === null) handlers.delete(action)
+            else handlers.set(action, handler)
+          },
+          metadata: null,
+          playbackState: 'none',
+        },
+      })
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: GROOVE } })
+
+      expect(handlers.size).toBe(1)
+      vi.unstubAllGlobals()
+    })
+
+    it('keeps the four dots and the tempo control whatever is chosen', () => {
+      const { transport, setTempo } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: GROOVE } })
+
+      expect(screen.getAllByRole('listitem')).toHaveLength(4)
+
+      fireEvent.change(screen.getByRole('slider', { name: metronome.tempo }), {
+        target: { value: '96' },
+      })
+      expect(setTempo).toHaveBeenLastCalledWith(96)
+      expect(screen.getByRole('status')).toHaveTextContent(
+        `96 ${metronome.tempoUnit}`,
+      )
+    })
+
+    it('still lights the dots the transport reports once the groove is chosen', () => {
+      const { transport, beat } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(picker(), { target: { value: GROOVE } })
+      fireEvent.click(screen.getByRole('button', { name: metronome.start }))
+
+      beat(3)
+      expect(screen.getAllByRole('listitem')[3]).toHaveAttribute(
+        'aria-current',
+        'step',
+      )
+    })
+  })
+
+  describe('pressing start while the samples are still arriving', () => {
+    it('says it is waiting rather than claiming to be running', () => {
+      const { transport, loading } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(screen.getByRole('combobox', { name: metronome.sound }), {
+        target: { value: 'straight-funk' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: metronome.start }))
+      loading(true)
+
+      const waiting = screen.getByRole('button', { name: metronome.loading })
+      expect(waiting).toBeVisible()
+      expect(screen.queryByRole('button', { name: metronome.stop })).toBeNull()
+
+      loading(false)
+      expect(screen.getByRole('button', { name: metronome.stop })).toBeVisible()
+    })
+
+    it('offers the press as usual while a chosen groove loads untouched', () => {
+      const { transport, loading } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.change(screen.getByRole('combobox', { name: metronome.sound }), {
+        target: { value: 'straight-funk' },
+      })
+      loading(true)
+
+      // Nobody has asked for sound yet, so there is nothing to wait for and
+      // the control keeps offering the press.
+      expect(screen.getByRole('button', { name: metronome.start })).toBeVisible()
+    })
+
+    it('is still the one control, so the wait costs no second press', () => {
+      const { transport, loading, stop } = fakeTransport()
+      render(<Metronome transport={transport} />)
+
+      fireEvent.click(screen.getByRole('button', { name: metronome.start }))
+      loading(true)
+
+      fireEvent.click(screen.getByRole('button', { name: metronome.loading }))
+      expect(stop).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('the sample credit', () => {
+    it('is on the page from the first render, with nothing to dismiss', () => {
+      render(<Metronome />)
+
+      expect(screen.getByText(app.sampleCredit)).toBeVisible()
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(screen.getAllByRole('button')).toEqual([
+        screen.getByRole('button', { name: metronome.start }),
+        screen.getByRole('button', { name: metronome.tap }),
+      ])
+    })
+
+    it('sits after start in the page and holds nothing above it', () => {
+      render(<Metronome />)
+
+      const play = screen.getByRole('button', { name: metronome.start })
+      const credit = screen.getByText(app.sampleCredit)
+
+      expect(
+        play.compareDocumentPosition(credit) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(credit.contains(play)).toBe(false)
+      // Last thing in the frame: there is nothing below it for it to displace,
+      // and start is above it rather than under it.
+      expect(credit.nextElementSibling).toBeNull()
     })
   })
 

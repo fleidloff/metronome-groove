@@ -7,6 +7,12 @@
 export type AppSnippets = {
   name: string
   tagline: string
+  /**
+   * The attribution the sample licence asks for. CC-BY 4.0 is a condition of
+   * shipping the kit at all, so this is an obligation rather than a decoration:
+   * it is always on the page and there is nothing to dismiss.
+   */
+  sampleCredit: string
 }
 
 export type MetronomeSnippets = {
@@ -18,4 +24,11 @@ export type MetronomeSnippets = {
   beatName: (args: { beat: number }) => string
   downbeatName: (args: { beat: number }) => string
   tap: string
+  /** What the source picker is asking. */
+  sound: string
+  click: string
+  straightFunk: string
+  /** Shown on the start control while the samples it needs are still arriving,
+   *  so a press during the load reads as waiting rather than as nothing. */
+  loading: string
 }

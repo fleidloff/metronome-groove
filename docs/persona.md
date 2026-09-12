@@ -66,7 +66,14 @@ Plays Wordle every morning.
   of how they did. The practice techniques exist — they build them by hand with
   the beat toggles, and the app never mentions them.
 - **The groove is the point, so it has to be a real kit.** Samples, scheduled
-  live, dead on the grid. Humanisation is a mix choice, never a timing one.
+  live. **The click is dead on the grid and a groove is not quite** — see
+  [ADR 0007](adr/0007-a-groove-is-humanized-a-click-is-not.md). A groove's hits
+  are displaced by a bounded, stateless offset, which is not the same thing as
+  drifting: every hit is computed from its true grid position, so the groove
+  comes back to the grid on every note rather than wandering off it. Sam's own
+  condition, and the reason this is allowed at all: *"it's minimal and we can
+  agree that the beat is not completely drifting apart but always coming back
+  together."*
 - **Thinning out is one row of toggles.** Beats mute for every voice at once,
   because what they are reducing is *reference*, not arranging a pattern. A grid
   of voices against beats is a drum machine and they did not ask for one.
@@ -83,8 +90,12 @@ Plays Wordle every morning.
   audible is right.
 - **No account, and nothing to lose.** The setup lives in the browser. Coming
   back tomorrow costs nothing and starts where they stopped.
-- **The lead register stays empty.** Sam brings the melody instrument. Drums,
-  bass and comp, nothing above the comp — same rule as next door.
+- **The lead register stays empty, and so does every other pitched one.** Sam
+  brings the melody instrument, and this app never states a pitch at all:
+  rhythm instruments only, no bass and no comp —
+  [ADR 0006](adr/0006-rhythm-instruments-only.md). That is a tighter rule than
+  next door's, and it is Sam's own: *"A bass line has a key… That is the app
+  choosing my material for me."*
 
 ## Not the persona
 

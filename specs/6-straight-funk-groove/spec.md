@@ -1,7 +1,7 @@
 # V6. The first groove — straight funk
 
 Started 2026-09-12 · `/vibe-with-docs`
-**Phase:** ready to build — `/implement-vibe-with-docs 6`
+**Phase:** shipped 2026-09-12
 
 ## What
 

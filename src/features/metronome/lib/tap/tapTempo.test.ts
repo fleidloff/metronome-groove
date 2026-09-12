@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_BPM, MIN_BPM } from '../click/tempo'
+import { MAX_BPM, MIN_BPM } from '../transport/tempo'
 import {
   addTap,
   commit,

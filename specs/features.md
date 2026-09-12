@@ -20,6 +20,7 @@ in either table.
 
 | N | Title | Shipped | What landed |
 | :-- | :-- | :-- | :-- |
+| [6](6-straight-funk-groove/) | The first groove — straight funk | 2026-09-12 | A one-bar funk groove selectable instead of the click: kick, snare and both hats, 22 samples fetched when the groove is chosen. The scheduler now walks a 16-step grid and asks a `Source` what sounds, so the click is a source like any other. A groove's hits are displaced by a bounded, stateless offset that never accumulates; the click stays exact. Produced [ADR 0006](../docs/adr/0006-rhythm-instruments-only.md), [0007](../docs/adr/0007-a-groove-is-humanized-a-click-is-not.md) and [0008](../docs/adr/0008-sample-calibration-is-derived-not-copied.md). |
 | [5](5-design-system-extraction/) | Design system extraction | 2026-09-12 | Eight primitives lifted out of the metronome slice into `src/components/` — `Button`, `Slider`, `Readout`, `Dot`, `List`, `Stack`, `PageFrame`, `Eyebrow` — and a lint rule that keeps them there: no `className` under `src/features/`. The `Space` scale gained its first consumer and widened to carry 10 and 12. Class assertions split by subject: the design system proves a variant is distinct, the feature proves it asked for it. Produced [ADR 0005](../docs/adr/0005-styling-lives-in-the-design-system.md). |
 | [4](4-bluetooth-tap-tempo/) | Start and stop from the speaker | 2026-09-12 | The speaker's button starts and stops the click, on Chrome. Specced as tap-tempo-over-Bluetooth; a hardware probe cut it to this, and the probe's findings are [ADR 0004](../docs/adr/0004-bluetooth-media-buttons.md). Absent on Firefox by decision, not degraded. Armed by the first on-screen press, because a browser will not let an untouched page claim a media session. |
 | [3](3-tap-tempo/) | Tap tempo | 2026-09-12 | Tap a tempo on screen: the click goes quiet while you tap and returns at the new tempo when you stop. No tap count — the tapping commits when it stops, after two beats of whatever was tapped (two seconds flat while there is only one tap). Shares one value with the slider. |
@@ -45,6 +46,7 @@ Seeded from [docs/music.md](../docs/music.md). Nothing here is decided.
 | increase tempo by 5 every time you stop and resume                                     | — |  |
 | groove variations (after 2 and 4 bars, still displayed as 1 bar, optional, selectable) | — |  |
 | optional count-in 4 clicks for grooves                                                 | — |  |
+| store settings in localStorage                                                         | — |  |
 | disable single instruments from a groove (add icons for the instruments)               | — |  |
 | add more grooves                                                                       | — |  |
 | Bluetooth remote — *specced as [V4](4-bluetooth-tap-tempo/)*                           | Set the tempo without touching the phone | **Leads with a probe**: a diagnostic page run on a phone paired to a real speaker, measuring what a double press actually sends and where the firmware starts swallowing presses. Its answer decides whether V4 has a tap-tempo half or ships play/stop only |
@@ -75,9 +77,9 @@ The premise of the project, and the expensive half.
 
 | Candidate | Why | Notes |
 | :-- | :-- | :-- |
-| Sample pack: copy, decode, schedule | A groove gives many reference points where a click gives one | music.md Q1 and Q3 — render offline vs synthesize, copy the pack vs depend on it. Carries two CC-BY credit strings into the UI |
-| One groove end to end | Proves the pipeline before the catalogue | Straight 8th rock is the baseline |
-| Groove under the click | music.md Q4 calls this the safer default | The thing to thin out first |
+| ~~Sample pack: copy, decode, schedule~~ | — | Shipped as V6: decoded and scheduled live, 22 files copied, one CC-BY string in the UI |
+| ~~One groove end to end~~ | — | Shipped as V6, with 16th funk rather than straight 8th rock |
+| ~~Groove under the click~~ | — | Answered against in V6: the groove *replaces* the click, because its hat already states every sixteenth |
 | The nine playable 4/4 grooves | What the pack can play today | Everything in music.md §2 except samba and the non-4/4 rows |
 | Clave-based grooves | Bossa and samba are written around a two-bar key pattern | The pattern *is* the groove; get it right before the kit around it |
 
@@ -88,7 +90,7 @@ The premise of the project, and the expensive half.
 | **Tell the player the speaker needs one press first** | V4 ships a feature nobody can discover | A browser will not let an untouched page claim a media session, so the speaker's button does nothing until Start has been pressed once on screen. A player pressing the speaker on a fresh page gets silence and no way to find out why from two metres away. Needs to say it **without** becoming setup-before-sound, which `docs/persona.md` names as a thing that loses Sam — so probably a line that appears only where it is relevant, and never a modal or a tutorial |
 | Use `nexttrack` from the speaker | A second signal the hardware does deliver | Deferred from V4 deliberately. A double press arrives as `nexttrack`; [ADR 0004](../docs/adr/0004-bluetooth-media-buttons.md) has the measurements. What it should *do* is undecided |
 | Persisted setup | *"Coming back tomorrow costs nothing and starts where they stopped"* | Tempo and toggles in the browser. No account — the persona counts a sign-up as setup before sound |
-| Credit strings in the UI | CC-BY is an obligation, not a footnote | Blocks shipping any MuldjordKit or DRSKit voice. **Not** triggered by claves, which is CC0 |
+| ~~Credit strings in the UI~~ | — | Shipped as V6: one always-visible line below Play. DRSKit's second string is not shipped, because no groove plays the ride |
 
 ### Ruled out by the persona
 

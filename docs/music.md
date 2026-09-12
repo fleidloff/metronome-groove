@@ -59,10 +59,19 @@ A click is one reference point per beat. A groove is many: a kick on 1, a
 backbeat on 2 and 4, a hat stating the subdivision, a bass stating the bar. The
 player can lock to whichever one their instrument needs.
 
-That is the whole premise of this project. The trade is that a groove has to be
-**dead on the grid** — a backing track that breathes is a worse reference than a
-click, not a better one. Humanisation is a mix choice here, not a timing one;
-any displacement we add must be bounded and deterministic.
+That is the whole premise of this project. The trade is that a groove has to
+hold the grid — a backing track that *drifts* is a worse reference than a click,
+not a better one.
+
+**This paragraph used to say humanisation was a mix choice and never a timing
+one. That is now half wrong and the half matters.** A groove's hits are
+displaced in time; the click's never are
+([ADR 0007](adr/0007-a-groove-is-humanized-a-click-is-not.md)). What the
+original sentence was reaching for is the distinction between *displaced* and
+*drifting*: the offset is a pure function of `(seed, voice, absoluteStep)`, so
+it never accumulates and every hit is computed from its true grid position. The
+requirement that displacement be bounded and deterministic survives unchanged —
+it is in fact what rules out the sibling project's accumulating walk.
 
 A groove also carries what a click cannot: swing, dynamics, and an idiom. A
 player who can sit inside a bossa cannot necessarily sit inside a shuffle, and a
@@ -121,11 +130,23 @@ kick       0 8
 
 **16th funk** (Funky Drummer shape, thinned)
 ```
-hatClosed  every step
+hatClosed  every step except 14
 hatOpen    14
 snare      4 12          ghosts 7 9 15
 kick       0 3 10
 ```
+
+**The exception on step 14 is a correction, not a detail.** This figure
+originally put the closed hat on every step *and* the open hat on 14. One
+hi-hat cannot be open and closed at the same instant. The open hat also has to
+be choked when the closed hat returns on 15, or it rings about a second into a
+2.4-second bar and sounds over the next downbeat.
+
+Ghost velocity is **0.37** as this repo renders it, not the 0.15–0.25 a reader
+might carry over from the sibling: that range is calibrated for a linear gain
+law and this repo's curve is decibel-linear, where 0.20 sits 28 dB under the
+backbeat instead of 22. See
+[ADR 0008](adr/0008-sample-calibration-is-derived-not-copied.md).
 
 **Half-time**
 ```
@@ -221,12 +242,17 @@ strike unless we vary it ourselves.
 | VSCO 2 CE | comp | CC0 |
 | Pastabass | bass | CC0 |
 
-The two CC-BY libraries mean **anything we render carries two credit strings**,
-visible to a user of the app and not only in the repo:
+The two CC-BY libraries mean **a render carries a credit string per library it
+actually draws on**, visible to a user of the app and not only in the repo:
 
 > Drum samples provided by DrumGizmo.org
 >
 > Ride cymbal samples from DRSKit, provided by DrumGizmo.org
+
+**This section used to say every render owes both.** It owes one per library it
+uses. The second string is DRSKit's, and DRSKit supplies only `ride` and
+`rideBell` — so the app ships the first string alone until a groove reaches for
+the ride. Shipping the second today would claim a source we do not use.
 
 A rendered groove is a derivative work of its samples, so the obligation follows
 the audio wherever it goes.
@@ -238,6 +264,11 @@ the audio wherever it goes.
 **Can play, today:** straight rock, 16th funk, half-time, shuffle, half-time
 shuffle, jazz ride, boom-bap, second line, bossa nova. That is nine of the
 thirteen grooves in section 2 — every 4/4 one except samba.
+
+**Two voices the pack holds that this app will never play.** `bass` and `comp`
+are documented in §3 because the pack contains them, not because we will use
+them: [ADR 0006](adr/0006-rhythm-instruments-only.md) rules out every melodic
+voice permanently. The gaps below are therefore all percussion.
 
 **Gaps, in the order they would bite:**
 
@@ -263,6 +294,14 @@ high crack a groove reaches for once. A groove that uses both has neither.
 ---
 
 ## 5. Open questions
+
+**Three of these were answered by V6** — see
+[`specs/6-straight-funk-groove/`](../specs/6-straight-funk-groove/). Q1: the
+groove is decoded and scheduled live in the browser. Q3: the pack is copied, 22
+files of it. Q4 was answered **against** this document's stated lean — the
+groove replaces the click rather than playing under it, because the figure
+already states what a click would: the hat plays every sixteenth and the kick
+states 1. Q2 and Q5 are still open.
 
 1. **Do we render offline or synthesise in the browser?** `daily-groove`
    pre-renders MP3s and commits them, because its grooves are fixed. A

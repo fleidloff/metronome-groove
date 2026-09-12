@@ -1,4 +1,4 @@
-import { MAX_BPM, MIN_BPM } from '../click/tempo'
+import { MAX_BPM, MIN_BPM } from '../transport/tempo'
 
 /**
  * The silence ends an attempt, not a tap count — and it is measured in beats of
